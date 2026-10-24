@@ -1,0 +1,12 @@
+{
+  "name": "shotblast-production-reporter",
+  "version": "1.0.0",
+  "description": "Hệ thống nhập báo cáo sản lượng Shotblast thời gian thực cho Tablet xưởng sản xuất",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["shotblast", "mes", "production-report", "tablet", "shopfloor"],
+  "author": "Production Dept",
+  "license": "ISC"
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "sb_1792818247743_629",
+    "date": "2026-10-24",
+    "month": "2026-10",
+    "shift": 2,
+    "line": "SMC3",
+    "stage": "Shotblast",
+    "machine": "SA01_SB02",
+    "turn": 1,
+    "productCode": "MGP12A-AC891-010",
+    "quantity": 1552,
+    "chamber": 1,
+    "settingQty": 10,
+    "timestamp": "2026-10-24T05:04:07.022Z",
+    "worker": "V.T.Hiếu"
+  },
+  {
+    "id": "sb_1792819920077_641",
+    "date": "2026-10-24",
+    "month": "2026-10",
+    "shift": 1,
+    "line": "SMC3",
+    "stage": "Shotblast",
+    "machine": "SA01_SB04",
+    "turn": 2,
+    "productCode": "MGP12A-AC891-010",
+    "quantity": 152,
+    "chamber": 1,
+    "settingQty": 10,
+    "timestamp": "2026-10-24T05:32:00.002Z",
+    "worker": "V.T.Hiếu"
+  }
+]

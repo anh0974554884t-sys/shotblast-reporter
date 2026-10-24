@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>SMC3 - Báo Cáo Sản Lượng Shotblast (Tablet Xưởng)</title>
+  
+  <!-- Modern Typography Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- SheetJS & QRCode Libraries (Local Bundled for 100% Offline Factory Operation) -->
+  <script src="js/xlsx.full.min.js"></script>
+  <script src="js/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="images/smc-logo.png">
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="theme-smc">
+  <div id="app" class="app-container">
+    
+    <!-- TOP NAVBAR / HEADER (SMC CORPORATE) -->
+    <header class="top-nav">
+      <div class="nav-left">
+        <div class="brand-badge">
+          <div class="smc-brand-logo">
+            <img src="images/smc-logo.png" alt="SMC Logo" class="smc-logo-img">
+            <span class="smc-logo-badge">SMC3</span>
+          </div>
+          <div class="brand-info">
+            <div class="brand-title">SURFACE TREATMENT • BÁO CÁO SHOTBLAST</div>
+            <div class="brand-sub">Phòng Sản Xuất (生産) • Anodizing & Phun Bi • Nhà máy SMC3</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-center">
+        <div class="live-clock-pill">
+          <span class="live-dot pulse"></span>
+          <span id="liveDate" class="live-date">23/10/2026</span>
+          <span class="divider">|</span>
+          <span id="liveTime" class="live-time">11:30:00</span>
+          <span class="divider">|</span>
+          <span id="currentShiftBadge" class="shift-indicator ca-1">CA 1 ĐANG CHẠY</span>
+        </div>
+      </div>
+
+      <div class="nav-right">
+        <!-- Tablet Connect Button -->
+        <button id="btnConnectTablet" class="nav-action-btn" title="Kết nối Tablet qua Wi-Fi">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+          <span>Kết Nối Tablet</span>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button id="btnToggleSound" class="nav-icon-btn active" title="Bật/Tắt âm thanh bíp khi nhập">
+          <svg id="iconSoundOn" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="btnToggleTheme" class="nav-icon-btn" title="Chuyển chế độ Sáng / Tối">
+          <svg id="iconTheme" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        </button>
+
+        <!-- Kiosk Fullscreen -->
+        <button id="btnFullscreen" class="nav-icon-btn" title="Toàn màn hình Kiosk Tablet">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+        </button>
+
+        <!-- Server Sync Indicator -->
+        <div id="syncBadge" class="sync-badge online" title="Trạng thái kết nối máy chủ">
+          <span class="sync-dot"></span>
+          <span class="sync-text">LAN Online</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPI STATS SUMMARY ROW -->
+    <section class="kpi-banner">
+      <div class="kpi-card highlight-card">
+        <div class="kpi-header">
+          <span class="kpi-title">TỔNG SẢN LƯỢNG HÔM NAY</span>
+          <span class="kpi-tag">Mục tiêu: 10,000</span>
+        </div>
+        <div class="kpi-body">
+          <span id="kpiTotalQty" class="kpi-number highlight-number">8,353</span>
+          <span class="kpi-unit">CÁI (個)</span>
+        </div>
+        <div class="kpi-progress-bar">
+          <div id="kpiProgressBar" class="kpi-progress-fill" style="width: 83.5%;"></div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">SẢN LƯỢNG THEO CA</span>
+          <span id="kpiShiftLabel" class="kpi-sub">Hôm nay</span>
+        </div>
+        <div class="kpi-body-split">
+          <div class="split-col">
+            <span class="split-label">Ca 1:</span>
+            <span id="kpiShift1Qty" class="split-val">5,230</span>
+          </div>
+          <div class="split-divider"></div>
+          <div class="split-col">
+            <span class="split-label">Ca 2:</span>
+            <span id="kpiShift2Qty" class="split-val">3,123</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">TỔNG SỐ LƯỢT (MẺ ĐÃ BẮN)</span>
+          <span class="kpi-sub">Lượt tiếp theo: <b id="nextTurnPreview" class="text-accent">11</b></span>
+        </div>
+        <div class="kpi-body">
+          <span id="kpiTotalTurns" class="kpi-number">10</span>
+          <span class="kpi-unit">LƯỢT (回)</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">MÁY BẮN CÁT HOẠT ĐỘNG</span>
+          <span class="kpi-sub">Line SMC3</span>
+        </div>
+        <div class="kpi-body-machines">
+          <span class="machine-tag active"><b id="kpiMachine1Count">SA01_SB01: 3 mẻ</b></span>
+          <span class="machine-tag active"><b id="kpiMachine2Count">SA01_SB02: 7 mẻ</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN TWO-COLUMN ERGONOMIC WORKSPACE -->
+    <main class="main-layout">
+      
+      <!-- LEFT COLUMN: QUICK TOUCH ENTRY FORM -->
+      <section class="left-panel">
+        <div class="panel-card entry-card">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <span class="badge-step">BƯỚC NHẬP LIỆU</span>
+              <h2 class="panel-title">GHI NHẬN SẢN LƯỢNG MẺ</h2>
+            </div>
+            <div class="turn-badge">
+              <span>LƯỢT (回) SỐ:</span>
+              <span id="currentTurnDisplay" class="turn-number">11</span>
+            </div>
+          </div>
+
+          <form id="batchForm" class="batch-form" onsubmit="return false;">
+            
+            <!-- ROW 1: MÁY SỐ THIẾT BỊ (機械番号) & CA (直) -->
+            <div class="form-row-grid">
+              
+              <!-- MÃ THIẾT BỊ -->
+              <div class="form-group">
+                <label class="form-label required">
+                  <span>MÃ SỐ THIẾT BỊ (機械番号)</span>
+                  <span class="label-hint">Chọn máy bắn</span>
+                </label>
+                <div class="machine-selector" id="machineSelector">
+                  <button type="button" class="btn-touch-select active" data-machine="SA01_SB01">SA01_SB01</button>
+                  <button type="button" class="btn-touch-select" data-machine="SA01_SB02">SA01_SB02</button>
+                  <button type="button" class="btn-touch-select" data-machine="SA01_SB03">SA01_SB03</button>
+                  <button type="button" class="btn-touch-select" data-machine="SA01_SB04">SA01_SB04</button>
+                </div>
+                <input type="hidden" id="inputMachine" value="SA01_SB01">
+              </div>
+
+              <!-- CA LÀM VIỆC -->
+              <div class="form-group">
+                <label class="form-label required">
+                  <span>CA LÀM VIỆC (直)</span>
+                  <span class="label-hint">Tự nhận diện theo giờ</span>
+                </label>
+                <div class="shift-selector" id="shiftSelector">
+                  <button type="button" class="btn-shift-select active" data-shift="1">
+                    <span class="shift-name">Ca 1</span>
+                    <span class="shift-time">06:00 - 14:00</span>
+                  </button>
+                  <button type="button" class="btn-shift-select" data-shift="2">
+                    <span class="shift-name">Ca 2</span>
+                    <span class="shift-time">14:00 - 22:00</span>
+                  </button>
+                  <button type="button" class="btn-shift-select" data-shift="3">
+                    <span class="shift-name">Ca 3</span>
+                    <span class="shift-time">22:00 - 06:00</span>
+                  </button>
+                </div>
+                <input type="hidden" id="inputShift" value="1">
+              </div>
+
+            </div>
+
+            <!-- ROW 2: MÃ SẢN PHẨM (品番) & QUÉT BARCODE/QR -->
+            <div class="form-group">
+              <div class="label-with-action">
+                <label class="form-label required" for="inputProductCode">
+                  <span>MÃ SẢN PHẨM (品番)</span>
+                  <span class="label-hint">Quét mã hoặc chọn nhanh</span>
+                </label>
+                <div class="label-action-btns">
+                  <button type="button" id="btnOpenScanner" class="btn-tool-pill btn-scan" title="Mở bảng quét mã vạch / QR">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><rect x="7" y="7" width="10" height="10"></rect></svg>
+                    <span>📷 Quét Mã (Camera / Súng)</span>
+                  </button>
+                  <button type="button" id="btnQuickPhotoScan" class="btn-tool-pill btn-camera-quick" title="Chụp ảnh tem nhanh bằng camera tablet (Khuyên dùng trên Wi-Fi)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    <span>📸 Chụp Tem Nhanh</span>
+                  </button>
+                  <button type="button" id="btnOpenProductMaster" class="btn-tool-pill">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    <span>Danh Mục DSSP</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Category Filter Tabs for 861 items from DSSP.xlsx -->
+              <div class="series-filter-tabs" id="seriesFilterTabs">
+                <button type="button" class="series-tab active" data-cat="">Tất cả (861 SP)</button>
+                <button type="button" class="series-tab" data-cat="MGP">MGP Body</button>
+                <button type="button" class="series-tab" data-cat="MXS">MXS Body</button>
+                <button type="button" class="series-tab" data-cat="MXQ">MXQ Body</button>
+                <button type="button" class="series-tab" data-cat="C1G">C1G Cover</button>
+                <button type="button" class="series-tab" data-cat="C96">C96</button>
+                <button type="button" class="series-tab" data-cat="NCA">NCA</button>
+                <button type="button" class="series-tab" data-cat="CUJ">CUJ</button>
+              </div>
+
+              <!-- Product Search & Input Box -->
+              <div class="product-input-wrapper">
+                <input 
+                  type="text" 
+                  id="inputProductCode" 
+                  class="form-control form-control-lg font-mono" 
+                  placeholder="Gõ hoặc quét mã SP (VD: P3800201C-020, MGP20...)"
+                  autocomplete="off"
+                >
+                <button type="button" id="btnClearProduct" class="btn-clear-input" title="Xóa">✕</button>
+
+                <!-- Live Auto-Suggest Dropdown -->
+                <div id="productSuggestions" class="product-suggestions-dropdown hidden"></div>
+              </div>
+
+              <!-- Standard Setting Qty Banner -->
+              <div id="productMetaBanner" class="product-meta-banner">
+                <div class="meta-item">
+                  <span class="meta-title">Tên sản phẩm:</span>
+                  <span id="metaProductName" class="meta-val">Chưa chọn mã</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-title">Định mức cái/mẻ thiết đặt (設定 数/バッチ):</span>
+                  <span id="metaSettingQty" class="meta-val highlight-val">--</span>
+                  <span class="meta-unit">cái/mẻ</span>
+                </div>
+              </div>
+
+              <!-- Quick Select Product Chips (Common items from photo) -->
+              <div class="quick-chips-wrapper">
+                <span class="chips-label">Mã thường làm:</span>
+                <div class="chips-list" id="quickProductChips">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+            </div>
+
+            <!-- ROW 3: SỐ LƯỢNG XỬ LÝ (生産数) & SỐ BUỒNG (チャンバー数) -->
+            <div class="form-row-grid qty-chamber-row">
+              
+              <!-- SỐ LƯỢNG XỬ LÝ -->
+              <div class="form-group">
+                <label class="form-label required" for="inputQuantity">
+                  <span>SỐ LƯỢNG XỬ LÝ (生産数 (個))</span>
+                  <span class="label-hint">Bấm phím số bên dưới</span>
+                </label>
+                <div class="qty-display-box">
+                  <input 
+                    type="number" 
+                    id="inputQuantity" 
+                    class="form-control form-control-giant font-mono" 
+                    placeholder="0"
+                    min="1"
+                    step="1"
+                    inputmode="numeric"
+                  >
+                  <span class="qty-unit-label">CÁI</span>
+                </div>
+
+                <!-- ON-SCREEN VIRTUAL NUMPAD FOR TABLET -->
+                <div class="touch-numpad" id="touchNumpad">
+                  <div class="numpad-quick-add">
+                    <button type="button" class="btn-quick-add" data-add="10">+10</button>
+                    <button type="button" class="btn-quick-add" data-add="50">+50</button>
+                    <button type="button" class="btn-quick-add" data-add="100">+100</button>
+                    <button type="button" class="btn-quick-add" data-add="200">+200</button>
+                  </div>
+                  <div class="numpad-grid">
+                    <button type="button" class="btn-numpad" data-val="7">7</button>
+                    <button type="button" class="btn-numpad" data-val="8">8</button>
+                    <button type="button" class="btn-numpad" data-val="9">9</button>
+                    <button type="button" class="btn-numpad btn-numpad-action" data-val="backspace">⌫ Xóa</button>
+
+                    <button type="button" class="btn-numpad" data-val="4">4</button>
+                    <button type="button" class="btn-numpad" data-val="5">5</button>
+                    <button type="button" class="btn-numpad" data-val="6">6</button>
+                    <button type="button" class="btn-numpad btn-numpad-action btn-clear" data-val="clear">C Xóa hết</button>
+
+                    <button type="button" class="btn-numpad" data-val="1">1</button>
+                    <button type="button" class="btn-numpad" data-val="2">2</button>
+                    <button type="button" class="btn-numpad" data-val="3">3</button>
+                    <button type="button" class="btn-numpad" data-val="00">00</button>
+
+                    <button type="button" class="btn-numpad btn-numpad-zero" data-val="0">0</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SỐ BUỒNG (チャンバー数) -->
+              <div class="form-group chamber-group">
+                <label class="form-label required">
+                  <span>SỐ BUỒNG (チャンバー数)</span>
+                  <span class="label-hint">1 hoặc 2 buồng</span>
+                </label>
+                <div class="chamber-selector" id="chamberSelector">
+                  <button type="button" class="btn-chamber-select active" data-chamber="1">
+                    <span class="chamber-number">1</span>
+                    <span class="chamber-title">1 BUỒNG</span>
+                  </button>
+                  <button type="button" class="btn-chamber-select" data-chamber="2">
+                    <span class="chamber-number">2</span>
+                    <span class="chamber-title">2 BUỒNG</span>
+                  </button>
+                </div>
+                <input type="hidden" id="inputChamber" value="1">
+
+                <!-- Helper info box -->
+                <div class="quick-summary-box">
+                  <div class="summary-line">
+                    <span>Tháng:</span>
+                    <b id="summaryMonth">2026-10</b>
+                  </div>
+                  <div class="summary-line">
+                    <span>Dây chuyền:</span>
+                    <b>SMC3</b>
+                  </div>
+                  <div class="summary-line">
+                    <span>Công đoạn:</span>
+                    <b>Shotblast</b>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- GIANT PRIMARY SUBMIT BUTTON -->
+            <div class="submit-action-wrap">
+              <button type="button" id="btnSubmitBatch" class="btn-giant-submit">
+                <div class="btn-icon-pulse">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="btn-text-wrap">
+                  <span class="btn-main-title">XÁC NHẬN & LƯU MẺ</span>
+                  <span class="btn-sub-title">Tự động tăng số lượt tiếp theo • Phím tắt [Enter]</span>
+                </div>
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: LIVE PRODUCTION LOG TABLE -->
+      <section class="right-panel">
+        <div class="panel-card log-card">
+          
+          <!-- TABLE TOOLBAR -->
+          <div class="table-toolbar">
+            <div class="toolbar-left">
+              <h3 class="toolbar-title">NHẬT KÝ SẢN XUẤT THỜI GIAN THỰC</h3>
+              <span id="logFilterSummary" class="log-count-pill">10 mẻ đã ghi</span>
+            </div>
+
+            <div class="toolbar-right">
+              <!-- Filter Ca -->
+              <select id="filterShift" class="form-select-sm">
+                <option value="">Tất cả Ca</option>
+                <option value="1">Ca 1</option>
+                <option value="2">Ca 2</option>
+                <option value="3">Ca 3</option>
+              </select>
+
+              <!-- Filter Machine -->
+              <select id="filterMachine" class="form-select-sm">
+                <option value="">Tất cả Máy</option>
+                <option value="SA01_SB01">SA01_SB01</option>
+                <option value="SA01_SB02">SA01_SB02</option>
+                <option value="SA01_SB03">SA01_SB03</option>
+                <option value="SA01_SB04">SA01_SB04</option>
+              </select>
+
+              <!-- Export Excel Button -->
+              <button type="button" id="btnExportExcel" class="btn-action-excel">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Xuất Excel Chuẩn Mẫu</span>
+              </button>
+
+              <!-- Clear/Reset All Batches Button -->
+              <button type="button" id="btnClearAllBatches" class="btn-action-danger-outline" title="Xóa toàn bộ dữ liệu để bắt đầu ca mới">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <span>Xóa Hết Ca</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- TABLE CONTAINER -->
+          <div class="table-responsive" id="tableContainer">
+            <table class="production-table" id="productionTable">
+              <thead>
+                <tr>
+                  <th class="col-turn">Lượt<br><span class="jp-sub">回</span></th>
+                  <th class="col-time">Thời gian</th>
+                  <th class="col-shift">Ca<br><span class="jp-sub">直</span></th>
+                  <th class="col-machine">Mã thiết bị<br><span class="jp-sub">機械番号</span></th>
+                  <th class="col-code">Mã sản phẩm<br><span class="jp-sub">品番</span></th>
+                  <th class="col-qty col-yellow">Số lượng xử lý<br><span class="jp-sub">生産数 (個)</span></th>
+                  <th class="col-chamber col-yellow">Số buồng<br><span class="jp-sub">チャンバー</span></th>
+                  <th class="col-setting">SL/mẻ Đặt<br><span class="jp-sub">設定 数/バッチ</span></th>
+                  <th class="col-actions">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="batchTableBody">
+                <!-- Dynamically populated rows -->
+              </tbody>
+              <tfoot>
+                <tr class="table-summary-row">
+                  <td colspan="5" class="text-right"><b>TỔNG CỘNG ĐANG HIỂN THỊ:</b></td>
+                  <td id="tableFooterTotalQty" class="text-accent text-bold text-center col-yellow font-mono text-lg">0</td>
+                  <td colspan="3" class="text-muted text-sm" id="tableFooterSummary">0 lượt ghi nhận</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- MODAL: QR / BARCODE SCANNER (LIVE CAMERA, PHOTO SNAPSHOT & HARDWARE GUN) -->
+    <div id="scannerModal" class="modal-overlay hidden">
+      <div class="modal-card scanner-modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">📷</span>
+            <h3>QUÉT MÃ VẠCH / QR CODE (THẺ KANBAN SMC)</h3>
+          </div>
+          <button type="button" class="btn-close-modal" id="btnCloseScanner">✕</button>
+        </div>
+        <div class="modal-body">
+          
+          <!-- Camera Device Selector & Switch -->
+          <div class="scanner-camera-controls" id="cameraControlsRow">
+            <div class="camera-select-wrap">
+              <label for="cameraSourceSelect" class="camera-select-label">Thiết bị camera:</label>
+              <select id="cameraSourceSelect" class="form-control form-control-sm font-mono">
+                <option value="">Đang dò tìm camera...</option>
+              </select>
+            </div>
+            <button type="button" id="btnSwitchCamera" class="btn-tool-pill" title="Đổi camera trước / sau">
+              🔄 Đổi Camera
+            </button>
+          </div>
+
+          <!-- Camera Viewport Container with Reticle Box & Scan Line -->
+          <div class="scanner-viewport-wrap">
+            <div id="cameraPreview" class="camera-viewport"></div>
+            <div class="scanner-reticle">
+              <div class="reticle-box">
+                <div class="scanner-laser-line"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Direct Photo Capture Button (Works 100% on HTTP Wi-Fi Tablets) -->
+          <div class="scanner-photo-action-panel">
+            <button type="button" id="btnCapturePhotoScan" class="btn-capture-scan-lg">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              <span>📸 BẤM ĐỂ CHỤP ẢNH TEM KANBAN (CHO TABLET WI-FI)</span>
+            </button>
+            <input type="file" id="barcodeFileInput" accept="image/*" capture="environment" style="display:none">
+            <div class="scanner-photo-subtext">
+              ✨ Khuyên dùng trên Tablet Wi-Fi: Bấm nút trên để chụp ảnh tem Kanban, hệ thống sẽ tự động quét mã tức thì!
+            </div>
+          </div>
+
+          <!-- Hardware Barcode Scanner Gun Notice -->
+          <div class="scanner-gun-tip">
+            <div class="gun-tip-icon">⚡</div>
+            <div class="gun-tip-text">
+              <b>Súng bắn mã vạch USB / Bluetooth:</b> Đang ở chế độ chờ bóp cò. Bạn có thể chĩa súng vào mã và bóp cò ở bất kỳ màn hình nào, hệ thống tự động nhận và chuyển sang ô số lượng!
+            </div>
+          </div>
+
+          <!-- Manual Fallback in Modal -->
+          <div class="scanner-manual-box">
+            <label class="form-label text-sm">Hoặc gõ trực tiếp mã sản phẩm nếu tem mờ/rách:</label>
+            <div class="scanner-manual-row">
+              <input type="text" id="manualScannerInput" placeholder="VD: P3800201C-020, MGP20..." class="form-control font-mono">
+              <button type="button" id="btnApplyManualScan" class="btn-primary">Chọn Mã</button>
+            </div>
+          </div>
+
+          <!-- HTTP Wi-Fi Tablet Explanation -->
+          <details class="scanner-troubleshoot-accordion">
+            <summary class="troubleshoot-summary">❓ Tại sao camera video trực tiếp bị chặn trên Tablet Wi-Fi?</summary>
+            <div class="troubleshoot-content">
+              <p>Trình duyệt di động (Chrome, Safari) theo chính sách bảo mật sẽ chặn <i>camera video liên tục</i> khi vào web qua IP nội bộ (HTTP: <code>http://192.168.x.x:3000</code>).</p>
+              <p><b>Giải pháp tốt nhất cho xưởng:</b></p>
+              <ul>
+                <li><b>Cách 1 (Tiện nhất):</b> Dùng nút màu xanh <b>"📸 BẤM ĐỂ CHỤP ẢNH TEM KANBAN"</b> ở trên — chụp phát nhận mã ngay!</li>
+                <li><b>Cách 2:</b> Dùng <b>súng quét mã vạch USB/Bluetooth</b> bóp cò bất kỳ lúc nào.</li>
+                <li><b>Cách 3 (Nếu muốn mở video trực tiếp trên Chrome Android):</b> Vào <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>, nhập IP máy chủ và bật Enabled.</li>
+              </ul>
+            </div>
+          </details>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: CONNECT TABLET (QR & IP LAN) -->
+    <div id="connectModal" class="modal-overlay hidden">
+      <div class="modal-card connect-modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">📱</span>
+            <h3>KẾT NỐI TABLET / ĐIỆN THOẠI QUA MẠNG WI-FI</h3>
+          </div>
+          <button type="button" class="btn-close-modal" id="btnCloseConnect">✕</button>
+        </div>
+        <div class="modal-body text-center">
+          <p class="connect-guide">Để công nhân sử dụng trên Tablet, chỉ cần mở trình duyệt và truy cập một trong các địa chỉ bên dưới (kết nối cùng mạng Wi-Fi xưởng):</p>
+          
+          <div id="lanAddressList" class="lan-address-list">
+            <!-- Populated by JS -->
+          </div>
+
+          <div class="qr-preview-box">
+            <div id="qrCodeContainer" class="qr-canvas"></div>
+            <span class="qr-label">Quét mã QR bằng Camera Tablet để mở ngay</span>
+          </div>
+
+          <div class="connect-note">
+            💡 <b>Mẹo xưởng:</b> Trên Tablet, chọn nút <b>"Thêm vào Màn hình chính" (Add to Home screen)</b> trên trình duyệt Chrome/Safari để ứng dụng mở toàn màn hình như một App riêng biệt!
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: PRODUCT MASTER LIST (DSSP) -->
+    <div id="productMasterModal" class="modal-overlay hidden">
+      <div class="modal-card dssp-modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">📋</span>
+            <h3>DANH MỤC SẢN PHẨM & ĐỊNH MỨC (DSSP)</h3>
+          </div>
+          <button type="button" class="btn-close-modal" id="btnCloseProductMaster">✕</button>
+        </div>
+        <div class="modal-body">
+          
+          <!-- Add New Product Form -->
+          <div class="add-product-panel">
+            <h4>Thêm hoặc Cập nhật Mã Sản Phẩm:</h4>
+            <div class="add-product-row">
+              <input type="text" id="newProdCode" placeholder="Mã sản phẩm (VD: P3800201C-020)" class="form-control font-mono">
+              <input type="text" id="newProdName" placeholder="Tên / Quy cách sản phẩm" class="form-control">
+              <input type="number" id="newProdSettingQty" placeholder="Số cái/mẻ (設定 数)" class="form-control" min="1" value="14">
+              <button type="button" id="btnSaveProduct" class="btn-primary">Lưu Sản Phẩm</button>
+            </div>
+          </div>
+
+          <!-- Search Bar for 861 SMC Products -->
+          <div class="dssp-search-bar">
+            <input type="text" id="dsspSearchInput" placeholder="🔍 Tìm kiếm nhanh trong 861 sản phẩm SMC (gõ mã, tên hoặc chủng loại)..." class="form-control font-mono">
+          </div>
+
+          <!-- Product Table List -->
+          <div class="dssp-table-wrap">
+            <table class="dssp-table">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Mã sản phẩm (品番)</th>
+                  <th>Tên sản phẩm</th>
+                  <th>Số lượng/mẻ thiết đặt (個)</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="dsspTableBody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: EDIT BATCH -->
+    <div id="editBatchModal" class="modal-overlay hidden">
+      <div class="modal-card edit-batch-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">✏️</span>
+            <h3>CHỈNH SỬA LƯỢT SẢN LƯỢNG</h3>
+          </div>
+          <button type="button" class="btn-close-modal" id="btnCloseEditBatch">✕</button>
+        </div>
+        <div class="modal-body">
+          <form id="editBatchForm" onsubmit="return false;">
+            <input type="hidden" id="editBatchId">
+            <div class="form-group">
+              <label class="form-label">Số lượt (回):</label>
+              <input type="number" id="editTurn" class="form-control" readonly>
+            </div>
+            <div class="form-row-grid">
+              <div class="form-group">
+                <label class="form-label">Mã thiết bị:</label>
+                <select id="editMachine" class="form-control">
+                  <option value="SA01_SB01">SA01_SB01</option>
+                  <option value="SA01_SB02">SA01_SB02</option>
+                  <option value="SA01_SB03">SA01_SB03</option>
+                  <option value="SA01_SB04">SA01_SB04</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Ca:</label>
+                <select id="editShift" class="form-control">
+                  <option value="1">Ca 1</option>
+                  <option value="2">Ca 2</option>
+                  <option value="3">Ca 3</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mã sản phẩm (品番):</label>
+              <input type="text" id="editProductCode" class="form-control font-mono">
+            </div>
+            <div class="form-row-grid">
+              <div class="form-group">
+                <label class="form-label">Số lượng xử lý (個):</label>
+                <input type="number" id="editQuantity" class="form-control font-mono">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Số buồng (チャンバー数):</label>
+                <select id="editChamber" class="form-control">
+                  <option value="1">1 Buồng</option>
+                  <option value="2">2 Buồng</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn-secondary" id="btnCancelEdit">Hủy bỏ</button>
+              <button type="button" class="btn-primary" id="btnSaveEditBatch">Lưu thay đổi</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: TOUCH-FRIENDLY DELETE CONFIRMATION -->
+    <div id="confirmDeleteModal" class="modal-overlay hidden">
+      <div class="modal-card confirm-modal-card">
+        <div class="modal-header modal-header-danger">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">⚠️</span>
+            <h3 id="deleteModalTitle">XÁC NHẬN XÓA LƯỢT SẢN LƯỢNG</h3>
+          </div>
+          <button type="button" class="btn-close-modal" id="btnCloseConfirmDelete">✕</button>
+        </div>
+        <div class="modal-body text-center">
+          <p class="confirm-message" id="deleteModalDesc">Bạn có chắc chắn muốn xóa lượt sản lượng này khỏi hệ thống?</p>
+          <div class="confirm-item-preview" id="deleteItemPreview"></div>
+          <div class="modal-actions-grid">
+            <button type="button" class="btn-secondary btn-touch-lg" id="btnCancelDelete">
+              ✕ HỦY BỎ
+            </button>
+            <button type="button" class="btn-danger btn-touch-lg" id="btnConfirmDelete">
+              🗑️ XÁC NHẬN XÓA
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="toast-container"></div>
+
+  </div>
+
+  <!-- Application Scripts -->
+  <script>
+    // Bypass Ngrok browser warning for all internal AJAX/fetch requests
+    const _origFetch = window.fetch;
+    window.fetch = function(url, opts = {}) {
+      opts.headers = opts.headers || {};
+      if (opts.headers instanceof Headers) {
+        opts.headers.set('ngrok-skip-browser-warning', 'true');
+      } else if (Array.isArray(opts.headers)) {
+        opts.headers.push(['ngrok-skip-browser-warning', 'true']);
+      } else {
+        opts.headers['ngrok-skip-browser-warning'] = 'true';
+      }
+      return _origFetch(url, opts);
+    };
+  </script>
+  <script src="js/audio.js"></script>
+  <script src="js/dssp.js"></script>
+  <script src="js/excel.js"></script>
+  <script src="js/scanner.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

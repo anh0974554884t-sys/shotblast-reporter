@@ -1,0 +1,12 @@
+# Binaries
+ngrok.exe
+cloudflared.exe
+*.zip
+*.log
+
+# Dependencies
+node_modules/
+
+# OS files
+Thumbs.db
+.DS_Store
