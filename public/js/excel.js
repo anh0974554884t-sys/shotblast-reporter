@@ -56,7 +56,7 @@ function exportProductionToExcel(batches, products, meta = {}) {
     "品番",       // Mã sản phẩm
     "生産数 (個)",// Số lượng xử lý
     "チャンバー数",// Số buồng
-    "設定 数/バッチ (個)", // Số lượng/mẻ thiết đặt
+    "設定 数/バッチ (個)", // SL/lượt đặt
     "登録日時",    // Thời gian ghi
     "担当者"      // Người thực hiện
   ]);
@@ -72,7 +72,7 @@ function exportProductionToExcel(batches, products, meta = {}) {
     "Mã sản phẩm",
     "Số lượng xử lý",
     "Số buồng",
-    "Số lượng/mẻ thiết đặt",
+    "SL/lượt đặt",
     "Thời gian",
     "Công nhân"
   ]);
@@ -130,7 +130,7 @@ function exportProductionToExcel(batches, products, meta = {}) {
     { wch: 22 }, // Mã sản phẩm
     { wch: 16 }, // Số lượng xử lý
     { wch: 12 }, // Số buồng
-    { wch: 20 }, // Số lượng/mẻ thiết đặt
+    { wch: 20 }, // SL/lượt đặt
     { wch: 20 }, // Thời gian
     { wch: 14 }  // Người thực hiện
   ];
@@ -144,7 +144,7 @@ function exportProductionToExcel(batches, products, meta = {}) {
       ["DANH MỤC SẢN PHẨM & ĐỊNH MỨC THIẾT ĐẶT (DSSP) - LINE SMC3 SHOTBLAST"],
       ["Cập nhật ngày: " + dateStr],
       [],
-      ["STT", "Mã sản phẩm (品番)", "Tên quy cách sản phẩm", "Số lượng/mẻ thiết đặt (設定 数/バッチ)", "Ghi chú"]
+      ["STT", "Mã sản phẩm (品番)", "Tên quy cách sản phẩm", "SL/lượt đặt (設定 数/バッチ)", "Ghi chú"]
     ];
 
     products.forEach((p, i) => {

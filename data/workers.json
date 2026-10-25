@@ -1,0 +1,107 @@
+[
+  {
+    "id": "101",
+    "name": "Nguyễn Văn A",
+    "shift": 1,
+    "machine": "SA01_SB01",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "102",
+    "name": "Trần Văn Bình",
+    "shift": 1,
+    "machine": "SA01_SB02",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "103",
+    "name": "Vũ Trung Hiếu",
+    "shift": 1,
+    "machine": "SA01_SB03",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "104",
+    "name": "Lê Văn Cường",
+    "shift": 1,
+    "machine": "SA01_SB04",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "105",
+    "name": "Võ Văn Kiên",
+    "shift": 1,
+    "machine": "SA01_SB05",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "201",
+    "name": "Phạm Văn Dũng",
+    "shift": 2,
+    "machine": "SA01_SB01",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "202",
+    "name": "Hoàng Đức Thịnh",
+    "shift": 2,
+    "machine": "SA01_SB02",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "203",
+    "name": "Đặng Quốc Hưng",
+    "shift": 2,
+    "machine": "SA01_SB03",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "204",
+    "name": "Bùi Văn Nam",
+    "shift": 2,
+    "machine": "SA01_SB04",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "205",
+    "name": "Dương Văn Thắng",
+    "shift": 2,
+    "machine": "SA01_SB05",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "301",
+    "name": "Đỗ Văn Toàn",
+    "shift": 3,
+    "machine": "SA01_SB01",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "302",
+    "name": "Ngô Văn Tuấn",
+    "shift": 3,
+    "machine": "SA01_SB02",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "303",
+    "name": "Trịnh Hoàng Long",
+    "shift": 3,
+    "machine": "SA01_SB03",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "304",
+    "name": "Lý Văn Phát",
+    "shift": 3,
+    "machine": "SA01_SB04",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "305",
+    "name": "Lâm Văn Hải",
+    "shift": 3,
+    "machine": "SA01_SB05",
+    "role": "Công nhân vận hành"
+  }
+]

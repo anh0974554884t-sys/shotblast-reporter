@@ -1,21 +1,24 @@
 @echo off
-chcp 65001 > nul
 cd /d "%~dp0"
-title Hệ Thống Nhập Sản Lượng Shotblast (SMC3)
+title HE THONG NHAP SAN LUONG SHOTBLAST (SMC3)
+
+:: Don dep tien trinh cu neu co
+taskkill /f /im ngrok.exe >nul 2>&1
 
 echo ========================================================================
-echo   KHỞI ĐỘNG HỆ THỐNG BÁO CÁO SHOTBLAST - TABLET XƯỞNG (SMC3)
+echo   KHOI DONG HE THONG BAO CAO SHOTBLAST - TABLET XUONG (SMC3)
 echo ========================================================================
 echo.
-
-echo Đang mở trình duyệt máy tính...
+echo [1/3] Dang mo giao dien tren may tinh...
 start http://localhost:3000
 echo.
-
-echo Đang khởi động Server và Đường truyền 4G/5G cố định...
-echo (Lưu ý: Giữ nguyên cửa sổ này trong suốt ca làm việc)
+echo [2/3] Dang khoi dong Server Node.js va Ngrok...
+echo.
+echo [3/3] Link 4G/5G co dinh: https://autistic-chute-suspend.ngrok-free.dev
+echo ========================================================================
+echo LUU Y: GIU NGUYEN CUA SO NAY TRONG SUOT CA LAM VIEC!
+echo ========================================================================
 echo.
 
 node server.js
 pause
-

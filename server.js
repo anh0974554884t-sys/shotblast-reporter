@@ -13,6 +13,7 @@ const BATCHES_FILE = path.join(DATA_DIR, 'production_data.json');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const SAMPLE_BATCHES_FILE = path.join(DATA_DIR, 'sample_batches.json');
 const DEFAULT_PRODUCTS_FILE = path.join(DATA_DIR, 'default_products.json');
+const WORKERS_FILE = path.join(DATA_DIR, 'workers.json');
 
 // Ensure data files exist
 if (!fs.existsSync(DATA_DIR)) {
@@ -33,6 +34,27 @@ if (!fs.existsSync(PRODUCTS_FILE)) {
   } else {
     fs.writeFileSync(PRODUCTS_FILE, JSON.stringify([], null, 2), 'utf8');
   }
+}
+
+if (!fs.existsSync(WORKERS_FILE)) {
+  const defaultWorkers = [
+    { id: "101", name: "Nguyễn Văn A", shift: 1, machine: "SA01_SB01", role: "Công nhân vận hành" },
+    { id: "102", name: "Trần Văn Bình", shift: 1, machine: "SA01_SB02", role: "Công nhân vận hành" },
+    { id: "103", name: "Vũ Trung Hiếu", shift: 1, machine: "SA01_SB03", role: "Công nhân vận hành" },
+    { id: "104", name: "Lê Văn Cường", shift: 1, machine: "SA01_SB04", role: "Công nhân vận hành" },
+    { id: "105", name: "Võ Văn Kiên", shift: 1, machine: "SA01_SB05", role: "Công nhân vận hành" },
+    { id: "201", name: "Phạm Văn Dũng", shift: 2, machine: "SA01_SB01", role: "Công nhân vận hành" },
+    { id: "202", name: "Hoàng Đức Thịnh", shift: 2, machine: "SA01_SB02", role: "Công nhân vận hành" },
+    { id: "203", name: "Đặng Quốc Hưng", shift: 2, machine: "SA01_SB03", role: "Công nhân vận hành" },
+    { id: "204", name: "Bùi Văn Nam", shift: 2, machine: "SA01_SB04", role: "Công nhân vận hành" },
+    { id: "205", name: "Dương Văn Thắng", shift: 2, machine: "SA01_SB05", role: "Công nhân vận hành" },
+    { id: "301", name: "Đỗ Văn Toàn", shift: 3, machine: "SA01_SB01", role: "Công nhân vận hành" },
+    { id: "302", name: "Ngô Văn Tuấn", shift: 3, machine: "SA01_SB02", role: "Công nhân vận hành" },
+    { id: "303", name: "Trịnh Hoàng Long", shift: 3, machine: "SA01_SB03", role: "Công nhân vận hành" },
+    { id: "304", name: "Lý Văn Phát", shift: 3, machine: "SA01_SB04", role: "Công nhân vận hành" },
+    { id: "305", name: "Lâm Văn Hải", shift: 3, machine: "SA01_SB05", role: "Công nhân vận hành" }
+  ];
+  fs.writeFileSync(WORKERS_FILE, JSON.stringify(defaultWorkers, null, 2), 'utf8');
 }
 
 function readJSON(filePath, fallback = []) {
@@ -232,7 +254,7 @@ const server = http.createServer(async (req, res) => {
   // DELETE Batch (Single or All)
   if (pathname === '/api/batches' && method === 'DELETE') {
     writeJSON(BATCHES_FILE, []);
-    return sendJSON(res, 200, { success: true, message: 'Đã xóa toàn bộ dữ liệu mẻ' });
+    return sendJSON(res, 200, { success: true, message: 'Đã xóa toàn bộ dữ liệu lượt' });
   }
 
   if (pathname.startsWith('/api/batches/') && method === 'DELETE') {
@@ -278,6 +300,43 @@ const server = http.createServer(async (req, res) => {
       }
       writeJSON(PRODUCTS_FILE, products);
       return sendJSON(res, 200, { success: true, products });
+    } catch (err) {
+      return sendJSON(res, 400, { error: err.message });
+    }
+  }
+
+  // GET Workers
+  if (pathname === '/api/workers' && method === 'GET') {
+    const workers = readJSON(WORKERS_FILE, []);
+    return sendJSON(res, 200, workers);
+  }
+
+  // POST Add/Update Worker
+  if (pathname === '/api/workers' && method === 'POST') {
+    try {
+      const payload = await parseRequestBody(req);
+      const workers = readJSON(WORKERS_FILE, []);
+      const workerId = String(payload.id || '').trim();
+      if (!workerId) {
+        return sendJSON(res, 400, { error: 'Mã nhân viên không được để trống' });
+      }
+
+      const existingIdx = workers.findIndex(w => String(w.id).trim().toUpperCase() === workerId.toUpperCase());
+      const workerData = {
+        id: workerId,
+        name: payload.name || `Nhân viên ${workerId}`,
+        shift: Number(payload.shift) || 1,
+        machine: payload.machine || 'SA01_SB01',
+        role: payload.role || 'Công nhân vận hành'
+      };
+
+      if (existingIdx >= 0) {
+        workers[existingIdx] = { ...workers[existingIdx], ...workerData };
+      } else {
+        workers.push(workerData);
+      }
+      writeJSON(WORKERS_FILE, workers);
+      return sendJSON(res, 200, { success: true, workers, worker: workerData });
     } catch (err) {
       return sendJSON(res, 400, { error: err.message });
     }
@@ -351,8 +410,18 @@ function startNgrokTunnel() {
       }
     });
 
-    ngrokProcess.on('exit', () => {
+    ngrokProcess.stderr.on('data', () => {});
+
+    ngrokProcess.on('error', err => {
+      console.error('Ngrok lỗi:', err.message);
+    });
+
+    ngrokProcess.on('exit', code => {
       ngrokProcess = null;
+      // Tự động kết nối lại nếu ngrok bị ngắt
+      setTimeout(() => {
+        startNgrokTunnel();
+      }, 5000);
     });
   } catch (err) {
     console.error('Lỗi khởi động ngrok tunnel:', err.message);
@@ -368,6 +437,12 @@ function cleanupNgrok() {
   }
 }
 
+process.on('uncaughtException', err => {
+  console.error('Lỗi ngoại lệ (đã bỏ qua để server không sập):', err.message);
+});
+process.on('unhandledRejection', reason => {
+  console.error('Lỗi Promise (đã bỏ qua):', reason);
+});
 process.on('exit', cleanupNgrok);
 process.on('SIGINT', () => { cleanupNgrok(); process.exit(); });
 process.on('SIGTERM', () => { cleanupNgrok(); process.exit(); });

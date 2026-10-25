@@ -32,6 +32,12 @@ class BarcodeScanner {
     this.initHardwareScannerListener();
   }
 
+  // Register main onScan callback
+  init(onScan) {
+    this.onScanCallback = onScan;
+    return this;
+  }
+
   // Supported Barcode Formats for Industrial Kanban & Travelers
   getSupportedFormats() {
     if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
@@ -174,7 +180,9 @@ class BarcodeScanner {
   // CAMERA SCANNING ENGINE
   // ==========================================
   async start(onScan) {
-    this.onScanCallback = onScan;
+    if (typeof onScan === 'function') {
+      this.onScanCallback = onScan;
+    }
     this.modalEl.classList.remove('hidden');
 
     if (this.manualInputEl) {
@@ -246,14 +254,15 @@ class BarcodeScanner {
     if (!this.html5QrCode) return;
 
     const qrConfig = {
-      fps: 20,
+      fps: 15,
       qrbox: (viewfinderWidth, viewfinderHeight) => {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const boxSize = Math.floor(Math.min(minEdge * 0.8, 280));
         return {
-          width: Math.min(viewfinderWidth * 0.85, 340),
-          height: Math.min(viewfinderHeight * 0.65, 200)
+          width: Math.max(boxSize, 220),
+          height: Math.max(boxSize, 220)
         };
-      },
-      aspectRatio: 1.777778
+      }
     };
 
     const cameraConfig = this.selectedCameraId ? { deviceId: { exact: this.selectedCameraId } } : { facingMode: "environment" };

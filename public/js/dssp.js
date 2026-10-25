@@ -149,7 +149,7 @@ class ProductManager {
       btn.type = 'button';
       btn.className = 'chip-btn';
       btn.innerHTML = `<b>${p.code}</b> <span class="chip-sub">(${p.name || p.category || 'SMC'})</span>`;
-      btn.title = `${p.code} - ${p.name || ''} (Định mức: ${p.settingQty || 10} cái/mẻ)`;
+      btn.title = `${p.code} - ${p.name || ''} (Định mức: ${p.settingQty || 10} cái/lượt)`;
       btn.addEventListener('click', () => {
         window.soundManager.playClick();
         onSelect(p);

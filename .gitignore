@@ -10,3 +10,6 @@ node_modules/
 # OS files
 Thumbs.db
 .DS_Store
+
+# Local tunnel state
+data/tunnel.json
