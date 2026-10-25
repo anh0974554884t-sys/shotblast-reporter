@@ -5,6 +5,8 @@ echo ========================================================================
 echo   DANG KET NOI VA DAY CODE LEN GITHUB...
 echo ========================================================================
 echo.
+git add .
+git commit -m "Cap nhat du lieu va tinh nang he thong"
 git push -u origin main
 echo.
 echo ========================================================================
