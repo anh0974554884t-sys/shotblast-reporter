@@ -13,6 +13,7 @@
   <!-- Local Bundled Libraries -->
   <script src="js/xlsx.full.min.js"></script>
   <script src="js/html5-qrcode.min.js"></script>
+  <script src="js/jsqr.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
   <!-- Favicon -->
@@ -611,26 +612,60 @@
                 <option value="">Đang dò tìm camera...</option>
               </select>
             </div>
-            <button type="button" id="btnSwitchCamera" class="btn-tool-pill" title="Đổi camera trước / sau">
-              🔄 Đổi Camera
-            </button>
+            <div class="scanner-camera-btns">
+              <button type="button" id="btnToggleTorch" class="btn-tool-pill hidden" title="Bật/Tắt đèn Flash">
+                💡 Flash
+              </button>
+              <button type="button" id="btnSwitchCamera" class="btn-tool-pill" title="Đổi camera trước / sau">
+                🔄 Đổi Camera
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Zoom Controls for Mobile / Tablet Focus -->
+          <div class="scanner-zoom-row hidden" id="scannerZoomRow">
+            <span class="zoom-label">🔍 Thu phóng:</span>
+            <div class="zoom-pill-group">
+              <button type="button" class="btn-zoom-pill active" data-zoom="1">1x</button>
+              <button type="button" class="btn-zoom-pill" data-zoom="1.5">1.5x</button>
+              <button type="button" class="btn-zoom-pill" data-zoom="2">2x</button>
+              <button type="button" class="btn-zoom-pill" data-zoom="2.5">2.5x</button>
+            </div>
           </div>
 
           <div class="scanner-viewport-wrap">
             <div id="cameraPreview" class="camera-viewport"></div>
-            <div class="scanner-reticle">
+            <div class="scanner-reticle" id="scannerReticle">
               <div class="reticle-box">
                 <div class="scanner-laser-line"></div>
+                <div class="reticle-corner reticle-corner-tl"></div>
+                <div class="reticle-corner reticle-corner-tr"></div>
+                <div class="reticle-corner reticle-corner-bl"></div>
+                <div class="reticle-corner reticle-corner-br"></div>
               </div>
+            </div>
+            <!-- Non-destructive Processing Feedback Overlay -->
+            <div id="scannerOverlayProcessing" class="scanner-processing-layer hidden">
+              <div class="scanner-spin-ring"></div>
+              <p id="scannerProcessText" class="scanner-process-msg">Đang phân tích & giải mã tem Kanban...</p>
             </div>
           </div>
 
           <div class="scanner-photo-action-panel">
-            <button type="button" id="btnCapturePhotoScan" class="btn-capture-scan-lg">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-              <span>📸 Bấm để chụp ảnh tem Kanban (Cho Tablet Wi-Fi)</span>
-            </button>
+            <div class="photo-btn-grid">
+              <button type="button" id="btnCapturePhotoScan" class="btn-capture-scan-lg" title="Mở máy ảnh chụp tem">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                <span>📸 Chụp ảnh tem mới</span>
+              </button>
+              <button type="button" id="btnPickGalleryScan" class="btn-capture-sub" title="Chọn ảnh có sẵn từ máy hoặc Zalo">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <span>🖼️ Chọn ảnh có sẵn</span>
+              </button>
+            </div>
+            <!-- Snapshot Input (Forces Camera App) -->
             <input type="file" id="barcodeFileInput" accept="image/*" capture="environment" style="display:none">
+            <!-- Gallery Input (Allows Any Image File / Gallery Selection) -->
+            <input type="file" id="barcodeGalleryInput" accept="image/*" style="display:none">
           </div>
 
           <div class="scanner-gun-tip">

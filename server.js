@@ -271,6 +271,24 @@ const server = http.createServer(async (req, res) => {
     return sendJSON(res, 200, products);
   }
 
+  // GET Single Product by Code (e.g., /api/product/MGP20ABAC893A075)
+  if ((pathname.startsWith('/api/product/') || pathname.startsWith('/api/products/')) && method === 'GET') {
+    const rawCode = decodeURIComponent(pathname.replace(/^\/api\/products?\//, '')).trim().toUpperCase();
+    if (rawCode) {
+      const products = readJSON(PRODUCTS_FILE, []);
+      const stripped = rawCode.replace(/[^A-Z0-9]/gi, '');
+      const p = products.find(x => 
+        (x.code && x.code.toUpperCase() === rawCode) ||
+        (x.code && x.code.replace(/[^A-Z0-9]/gi, '').toUpperCase() === stripped)
+      );
+      if (p) {
+        return sendJSON(res, 200, p);
+      } else {
+        return sendJSON(res, 404, { error: 'Không tìm thấy sản phẩm với mã: ' + rawCode });
+      }
+    }
+  }
+
   // POST Add/Update Product
   if (pathname === '/api/products' && method === 'POST') {
     try {
