@@ -14,6 +14,7 @@ const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const SAMPLE_BATCHES_FILE = path.join(DATA_DIR, 'sample_batches.json');
 const DEFAULT_PRODUCTS_FILE = path.join(DATA_DIR, 'default_products.json');
 const WORKERS_FILE = path.join(DATA_DIR, 'workers.json');
+const MACHINES_FILE = path.join(DATA_DIR, 'machines.json');
 
 // Ensure data files exist
 if (!fs.existsSync(DATA_DIR)) {
@@ -36,25 +37,39 @@ if (!fs.existsSync(PRODUCTS_FILE)) {
   }
 }
 
+const DEFAULT_MACHINES = [
+  "SA01_SB01",
+  "SA01_SB02",
+  "SA01_SB03",
+  "SA01_SB04",
+  "SA01_SB05",
+  "LA02_SB01"
+];
+
+if (!fs.existsSync(MACHINES_FILE)) {
+  fs.writeFileSync(MACHINES_FILE, JSON.stringify(DEFAULT_MACHINES, null, 2), 'utf8');
+}
+
+const DEFAULT_WORKERS = [
+  { id: "02623124", name: "Nguyễn Công Hải", machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
+  { id: "02620127", name: "Lê Duy Tuấn", machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
+  { id: "02524300", name: "Nguyễn Văn Kiên", machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
+  { id: "02526502", name: "Trịnh Trần Huỳnh Hiệp", machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
+  { id: "02623115", name: "Nguyễn Văn Sỹ", machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
+  { id: "02620534", name: "Nguyễn Ngọc Tiến", machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
+  { id: "02627625", name: "Nguyễn Hữu Nghĩa", machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
+  { id: "02629580", name: "Phan Nhật Trường", machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
+  { id: "02629599", name: "Đặng Minh Phương Hiệp", machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
+  { id: "02622295", name: "Nguyễn Hoàng Huy", machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
+  { id: "02520340", name: "Lê Duy Hải", machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
+  { id: "02646462", name: "Nguyễn Nhất Tâm", machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
+  { id: "02622462", name: "Huỳnh Chí Cường", machines: ["SA01_SB05"], machine: "SA01_SB05", role: "Công nhân vận hành" },
+  { id: "02642721", name: "Trương Văn Thiện", machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
+  { id: "02644589", name: "Phan Văn Tuyên", machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" }
+];
+
 if (!fs.existsSync(WORKERS_FILE)) {
-  const defaultWorkers = [
-    { id: "101", name: "Nguyễn Văn A", shift: 1, machine: "SA01_SB01", role: "Công nhân vận hành" },
-    { id: "102", name: "Trần Văn Bình", shift: 1, machine: "SA01_SB02", role: "Công nhân vận hành" },
-    { id: "103", name: "Vũ Trung Hiếu", shift: 1, machine: "SA01_SB03", role: "Công nhân vận hành" },
-    { id: "104", name: "Lê Văn Cường", shift: 1, machine: "SA01_SB04", role: "Công nhân vận hành" },
-    { id: "105", name: "Võ Văn Kiên", shift: 1, machine: "SA01_SB05", role: "Công nhân vận hành" },
-    { id: "201", name: "Phạm Văn Dũng", shift: 2, machine: "SA01_SB01", role: "Công nhân vận hành" },
-    { id: "202", name: "Hoàng Đức Thịnh", shift: 2, machine: "SA01_SB02", role: "Công nhân vận hành" },
-    { id: "203", name: "Đặng Quốc Hưng", shift: 2, machine: "SA01_SB03", role: "Công nhân vận hành" },
-    { id: "204", name: "Bùi Văn Nam", shift: 2, machine: "SA01_SB04", role: "Công nhân vận hành" },
-    { id: "205", name: "Dương Văn Thắng", shift: 2, machine: "SA01_SB05", role: "Công nhân vận hành" },
-    { id: "301", name: "Đỗ Văn Toàn", shift: 3, machine: "SA01_SB01", role: "Công nhân vận hành" },
-    { id: "302", name: "Ngô Văn Tuấn", shift: 3, machine: "SA01_SB02", role: "Công nhân vận hành" },
-    { id: "303", name: "Trịnh Hoàng Long", shift: 3, machine: "SA01_SB03", role: "Công nhân vận hành" },
-    { id: "304", name: "Lý Văn Phát", shift: 3, machine: "SA01_SB04", role: "Công nhân vận hành" },
-    { id: "305", name: "Lâm Văn Hải", shift: 3, machine: "SA01_SB05", role: "Công nhân vận hành" }
-  ];
-  fs.writeFileSync(WORKERS_FILE, JSON.stringify(defaultWorkers, null, 2), 'utf8');
+  fs.writeFileSync(WORKERS_FILE, JSON.stringify(DEFAULT_WORKERS, null, 2), 'utf8');
 }
 
 function readJSON(filePath, fallback = []) {
@@ -205,12 +220,16 @@ const server = http.createServer(async (req, res) => {
         stage: payload.stage || 'Shotblast',
         machine: payload.machine || 'SA01_SB01',
         turn: nextTurn,
+        startTime: payload.startTime || '',
+        endTime: payload.endTime || '',
         productCode: (payload.productCode || '').trim().toUpperCase(),
         quantity: Number(payload.quantity) || 0,
         chamber: Number(payload.chamber) || 1,
         settingQty: Number(payload.settingQty) || 0,
         timestamp: payload.timestamp || now.toISOString(),
-        worker: payload.worker || 'Công nhân'
+        worker: payload.worker || payload.operator || 'Người thao tác',
+        operator: payload.operator || payload.worker || 'Người thao tác',
+        operatorId: payload.operatorId || ''
       };
 
       batches.push(newBatch);
@@ -237,11 +256,15 @@ const server = http.createServer(async (req, res) => {
         shift: payload.shift !== undefined ? Number(payload.shift) : batches[idx].shift,
         machine: payload.machine || batches[idx].machine,
         turn: payload.turn !== undefined ? Number(payload.turn) : batches[idx].turn,
+        startTime: payload.startTime !== undefined ? payload.startTime : (batches[idx].startTime || ''),
+        endTime: payload.endTime !== undefined ? payload.endTime : (batches[idx].endTime || ''),
         productCode: payload.productCode !== undefined ? payload.productCode.trim().toUpperCase() : batches[idx].productCode,
         quantity: payload.quantity !== undefined ? Number(payload.quantity) : batches[idx].quantity,
         chamber: payload.chamber !== undefined ? Number(payload.chamber) : batches[idx].chamber,
         settingQty: payload.settingQty !== undefined ? Number(payload.settingQty) : batches[idx].settingQty,
-        worker: payload.worker || batches[idx].worker
+        worker: payload.worker || payload.operator || batches[idx].worker,
+        operator: payload.operator || payload.worker || batches[idx].operator,
+        operatorId: payload.operatorId !== undefined ? payload.operatorId : batches[idx].operatorId
       };
 
       writeJSON(BATCHES_FILE, batches);
@@ -323,9 +346,30 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // GET Machines
+  if (pathname === '/api/machines' && method === 'GET') {
+    const machines = readJSON(MACHINES_FILE, DEFAULT_MACHINES);
+    return sendJSON(res, 200, machines);
+  }
+
+  // POST Save Machines
+  if (pathname === '/api/machines' && method === 'POST') {
+    try {
+      const payload = await parseRequestBody(req);
+      const list = Array.isArray(payload) ? payload : (payload.machines || []);
+      if (!Array.isArray(list) || list.length === 0) {
+        return sendJSON(res, 400, { error: 'Danh sách mã máy không hợp lệ' });
+      }
+      writeJSON(MACHINES_FILE, list);
+      return sendJSON(res, 200, { success: true, machines: list });
+    } catch (err) {
+      return sendJSON(res, 400, { error: err.message });
+    }
+  }
+
   // GET Workers
   if (pathname === '/api/workers' && method === 'GET') {
-    const workers = readJSON(WORKERS_FILE, []);
+    const workers = readJSON(WORKERS_FILE, DEFAULT_WORKERS);
     return sendJSON(res, 200, workers);
   }
 
@@ -333,18 +377,23 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/workers' && method === 'POST') {
     try {
       const payload = await parseRequestBody(req);
-      const workers = readJSON(WORKERS_FILE, []);
+      const workers = readJSON(WORKERS_FILE, DEFAULT_WORKERS);
       const workerId = String(payload.id || '').trim();
       if (!workerId) {
-        return sendJSON(res, 400, { error: 'Mã nhân viên không được để trống' });
+        return sendJSON(res, 400, { error: 'Mã nhân viên (MSNV) không được để trống' });
       }
 
       const existingIdx = workers.findIndex(w => String(w.id).trim().toUpperCase() === workerId.toUpperCase());
+      const machinesArr = Array.isArray(payload.machines) 
+        ? payload.machines 
+        : (payload.machine ? String(payload.machine).split(/[,;]+/).map(s => s.trim()).filter(Boolean) : []);
+
       const workerData = {
         id: workerId,
         name: payload.name || `Nhân viên ${workerId}`,
         shift: Number(payload.shift) || 1,
-        machine: payload.machine || 'SA01_SB01',
+        machine: payload.machine || (machinesArr.length > 0 ? machinesArr.join(', ') : 'SA01_SB01'),
+        machines: machinesArr.length > 0 ? machinesArr : [payload.machine || 'SA01_SB01'],
         role: payload.role || 'Công nhân vận hành'
       };
 
@@ -358,6 +407,15 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       return sendJSON(res, 400, { error: err.message });
     }
+  }
+
+  // DELETE Worker
+  if (pathname.startsWith('/api/workers/') && method === 'DELETE') {
+    const workerId = decodeURIComponent(pathname.replace('/api/workers/', '')).trim();
+    const workers = readJSON(WORKERS_FILE, DEFAULT_WORKERS);
+    const filtered = workers.filter(w => String(w.id).trim().toUpperCase() !== workerId.toUpperCase());
+    writeJSON(WORKERS_FILE, filtered);
+    return sendJSON(res, 200, { success: true, workers: filtered });
   }
 
   // Reset to default sample data

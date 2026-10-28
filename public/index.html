@@ -77,6 +77,10 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
               <span>Kết nối Tablet qua Wi-Fi</span>
             </button>
+            <button type="button" id="btnOpenSettingsFromMenu" class="dropdown-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33-1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span>Cài đặt Máy & Người thao tác</span>
+            </button>
             <button type="button" id="btnToggleSound" class="dropdown-item">
               <svg id="iconSoundOn" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
               <span id="soundLabel">Âm thanh: Đang bật</span>
@@ -107,69 +111,129 @@
          ====================================================================== -->
     <main id="operatorView" class="operator-layout">
       
-      <!-- LEFT COLUMN: STEP 1 (WORKER ID) & STEP 2 (PRODUCT) -->
+      <!-- LEFT COLUMN: STEPS 1, 2, 3 (SETUP) & STEP 5 (PRODUCT) -->
       <section class="operator-col-left">
         
-        <!-- STEP 1: WORKER IDENTIFICATION -->
-        <div class="step-card" id="stepWorkerCard">
-          <div class="step-header">
-            <span class="step-number">1</span>
-            <div class="step-titles">
-              <h2 class="step-title">Mã nhân viên</h2>
-              <span class="step-sub">Quét thẻ hoặc gõ mã để tự động nhận ca & máy</span>
-            </div>
-          </div>
-
-          <div class="worker-input-wrap">
-            <div class="input-with-clear" id="workerInputGroup">
-              <input 
-                type="text" 
-                id="inputWorkerId" 
-                class="form-control form-control-xl font-mono text-center" 
-                placeholder="Nhập mã NV (VD: 101, 102...)"
-                autocomplete="off"
-                inputmode="numeric"
-              >
-              <button type="button" id="btnClearWorker" class="btn-clear-field" title="Xóa">✕</button>
-            </div>
-
-            <!-- Error message if worker code not found -->
-            <div id="workerErrorAlert" class="inline-error-alert hidden">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-              <span>Mã nhân viên không tồn tại trong danh sách. Vui lòng kiểm tra lại!</span>
-            </div>
-
-            <!-- Verified Worker Card (Appears automatically upon valid worker ID) -->
-            <div id="workerVerifiedCard" class="worker-verified-card hidden">
-              <div class="worker-avatar-box">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <!-- STEP 1, 2, 3: SETUP CARD -->
+        <div class="step-card" id="stepSetupCard">
+          
+          <!-- STEP 1: CHỌN MÁY -->
+          <div class="step-subblock" id="blockStep1Machine">
+            <div class="step-header compact-header">
+              <span class="step-number">1</span>
+              <div class="step-titles">
+                <h2 class="step-title">Chọn máy</h2>
+                <span class="step-sub">Chọn máy để lọc người thao tác ở Bước 2</span>
               </div>
-              <div class="worker-info-content">
-                <div class="worker-name-line">
-                  <span id="workerNameDisplay" class="worker-name">Nguyễn Văn A</span>
-                  <span class="verified-tag">✓ Đã xác nhận</span>
-                </div>
-                <div class="worker-tags-row">
-                  <span id="workerShiftDisplay" class="badge-tag tag-shift">Ca 1 (06:00 - 14:00)</span>
-                  <span id="workerMachineDisplay" class="badge-tag tag-machine">Máy SA01_SB01</span>
-                </div>
-              </div>
-              <button type="button" id="btnChangeWorker" class="btn-change-worker" title="Đổi nhân viên khác">
-                Đổi người
+              <button type="button" id="btnOpenMachineSettings" class="btn-pill-action" title="Cài đặt mã máy">
+                ⚙️ Cài đặt máy
               </button>
             </div>
 
-            <!-- Hidden values to bind with batch payload -->
-            <input type="hidden" id="inputWorkerName" value="">
-            <input type="hidden" id="inputShift" value="1">
+            <!-- Prominent Machine Buttons Grid -->
+            <div class="machine-btn-grid" id="machineSelector">
+              <!-- Dynamically rendered buttons -->
+            </div>
             <input type="hidden" id="inputMachine" value="SA01_SB01">
           </div>
+
+          <!-- STEP 2: NGƯỜI THAO TÁC -->
+          <div class="step-subblock" id="blockStep2Operator">
+            <div class="step-header compact-header">
+              <span class="step-number">2</span>
+              <div class="step-titles">
+                <h2 class="step-title">Người thao tác</h2>
+                <span class="step-sub" id="operatorMachineHint">Ưu tiên người thuộc máy đã chọn (cho phép đổi người khác)</span>
+              </div>
+              <button type="button" id="btnOpenWorkerSettings" class="btn-pill-action" title="Quản lý danh sách người thao tác">
+                👥 Quản lý người
+              </button>
+            </div>
+
+            <div class="operator-input-wrap">
+              <!-- Searchable Dropdown Field -->
+              <div class="input-with-clear" id="operatorSearchGroup">
+                <input 
+                  type="text" 
+                  id="inputOperatorSearch" 
+                  class="form-control form-control-lg" 
+                  placeholder="🔍 Gõ tên hoặc MSNV (hoặc quét thẻ)..."
+                  autocomplete="off"
+                >
+                <button type="button" id="btnClearOperator" class="btn-clear-field" title="Xóa">✕</button>
+              </div>
+
+              <!-- Search Suggestions Dropdown Menu -->
+              <div id="operatorDropdownList" class="operator-dropdown-menu hidden">
+                <!-- Dynamically rendered: Group 1 (Thuộc máy đã chọn), Group 2 (Người khác) -->
+              </div>
+
+              <!-- Error message if not found -->
+              <div id="operatorErrorAlert" class="inline-error-alert hidden">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span>Không tìm thấy người thao tác. Vui lòng chọn trong danh sách!</span>
+              </div>
+
+              <!-- Verified Worker Card (Appears automatically upon selection) -->
+              <div id="workerVerifiedCard" class="worker-verified-card hidden">
+                <div class="worker-avatar-box">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </div>
+                <div class="worker-info-content">
+                  <div class="worker-name-line">
+                    <span id="workerNameDisplay" class="worker-name">Nguyễn Công Hải</span>
+                    <span class="verified-tag">✓ Đã xác nhận</span>
+                  </div>
+                  <div class="worker-tags-row">
+                    <span id="workerIdDisplay" class="badge-tag font-mono">MSNV: 02623124</span>
+                    <span id="workerMachineTag" class="badge-tag tag-machine">Máy ưu tiên: SB02</span>
+                  </div>
+                </div>
+                <button type="button" id="btnChangeWorker" class="btn-change-worker" title="Đổi người thao tác khác">
+                  Đổi người
+                </button>
+              </div>
+
+              <!-- Hidden inputs -->
+              <input type="hidden" id="inputWorkerName" value="">
+              <input type="hidden" id="inputWorkerId" value="">
+            </div>
+          </div>
+
+          <!-- STEP 3: CHỌN CA -->
+          <div class="step-subblock" id="blockStep3Shift">
+            <div class="step-header compact-header">
+              <span class="step-number">3</span>
+              <div class="step-titles">
+                <h2 class="step-title">Chọn ca</h2>
+                <span class="step-sub">Tự nhận theo giờ hiện tại, bấm nút để đổi tay</span>
+              </div>
+              <span id="shiftAutoBadge" class="shift-auto-badge">⚡ Giờ hiện tại</span>
+            </div>
+
+            <div class="shift-btn-grid" id="shiftSelector">
+              <button type="button" class="btn-shift-pill active" data-shift="1">
+                <span class="shift-name">Ca 1</span>
+                <span class="shift-hours">06:00 – 14:00</span>
+              </button>
+              <button type="button" class="btn-shift-pill" data-shift="2">
+                <span class="shift-name">Ca 2</span>
+                <span class="shift-hours">14:00 – 22:00</span>
+              </button>
+              <button type="button" class="btn-shift-pill" data-shift="3">
+                <span class="shift-name">Ca 3</span>
+                <span class="shift-hours">22:00 – 06:00 (qua ngày)</span>
+              </button>
+            </div>
+            <input type="hidden" id="inputShift" value="1">
+          </div>
+
         </div>
 
-        <!-- STEP 2: PRODUCT CODE (PROMINENT LARGE NAME & AUTO-SETTING) -->
+        <!-- STEP 5: MÃ SẢN PHẨM -->
         <div class="step-card" id="stepProductCard">
           <div class="step-header">
-            <span class="step-number">2</span>
+            <span class="step-number">5</span>
             <div class="step-titles">
               <h2 class="step-title">Mã sản phẩm</h2>
               <span class="step-sub">Quét mã QR/Barcode hoặc chọn nhanh mã thường làm</span>
@@ -229,60 +293,93 @@
 
       </section>
 
-      <!-- RIGHT COLUMN: STEP 3 (CHAMBER & QUANTITY & NUMPAD & SUBMIT) -->
+      <!-- RIGHT COLUMN: STEP 4 (TIME) & STEP 5 (B) (CHAMBER, QUANTITY & BALANCED NUMPAD) -->
       <section class="operator-col-right">
         
         <div class="step-card full-height-step" id="stepQtyCard">
           
-          <div class="step-header">
-            <span class="step-number">3</span>
-            <div class="step-titles">
-              <h2 class="step-title">Buồng & Số lượng</h2>
-              <span class="step-sub">Chọn buồng và nhập số lượng thực tế xử lý</span>
+          <!-- STEP 4: THỜI GIAN BẮN -->
+          <div class="step-subblock" id="blockStep4Time">
+            <div class="step-header compact-header">
+              <span class="step-number">4</span>
+              <div class="step-titles">
+                <h2 class="step-title">Thời gian bắn</h2>
+                <span class="step-sub">Giờ Bắt đầu & Dừng (Bắt buộc nhập trước khi Lưu)</span>
+              </div>
+              <span id="shotDurationBadge" class="shot-duration-badge hidden">Thời lượng: 0 phút</span>
+            </div>
+
+            <div class="shot-time-grid">
+              <div class="shot-time-item">
+                <label class="time-field-label" for="inputStartTime">
+                  <span class="time-dot start-dot"></span> Bắt đầu:
+                </label>
+                <div class="time-input-wrap">
+                  <input type="time" id="inputStartTime" class="form-control form-control-time font-mono" required>
+                  <button type="button" id="btnStartTimeNow" class="btn-now-pill" title="Lấy giờ hiện tại">Bây giờ</button>
+                </div>
+              </div>
+
+              <div class="shot-time-item">
+                <label class="time-field-label" for="inputEndTime">
+                  <span class="time-dot end-dot"></span> Dừng:
+                </label>
+                <div class="time-input-wrap">
+                  <input type="time" id="inputEndTime" class="form-control form-control-time font-mono" required>
+                  <button type="button" id="btnEndTimeNow" class="btn-now-pill" title="Lấy giờ hiện tại">Bây giờ</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="timeValidationAlert" class="inline-error-alert hidden" style="margin-top: 4px; padding: 5px 10px; font-size: 0.82rem;">
+              <span>⚠️ Giờ Dừng phải lớn hơn giờ Bắt đầu! (Ca 3 cho phép qua 00:00)</span>
             </div>
           </div>
 
-          <!-- CHAMBER SELECTOR: COMPACT 6-CHAMBER SELECTOR -->
-          <div class="chamber-section">
-            <div class="chamber-label-row">
-              <label class="section-micro-label">Số buồng máy (1 - 6 buồng):</label>
-              <span id="selectedChamberBadge" class="selected-chamber-badge">Chưa chọn buồng</span>
-            </div>
-            <div class="chamber-btn-row" id="chamberSelector">
-              <button type="button" class="btn-chamber-sm" data-chamber="1">1</button>
-              <button type="button" class="btn-chamber-sm" data-chamber="2">2</button>
-              <button type="button" class="btn-chamber-sm" data-chamber="3">3</button>
-              <button type="button" class="btn-chamber-sm" data-chamber="4">4</button>
-              <button type="button" class="btn-chamber-sm" data-chamber="5">5</button>
-              <button type="button" class="btn-chamber-sm" data-chamber="6">6</button>
-            </div>
-            <input type="hidden" id="inputChamber" value="">
-          </div>
-
-          <!-- QUANTITY DISPLAY BOX -->
-          <div class="qty-section">
-            <div class="qty-label-row">
-              <label class="section-micro-label" for="inputQuantity">Số lượng xử lý:</label>
-            </div>
-            <div class="qty-input-box">
-              <input 
-                type="number" 
-                id="inputQuantity" 
-                class="form-control form-control-giant font-mono text-center" 
-                placeholder="0"
-                min="1"
-                step="1"
-                inputmode="numeric"
-              >
-              <span class="qty-unit-tag">PCS</span>
+          <!-- STEP 5 (B): BUỒNG & SỐ LƯỢNG -->
+          <div class="step-subblock" id="blockStep5ChamberQty">
+            <!-- CHAMBER SELECTOR: COMPACT 6-CHAMBER SELECTOR -->
+            <div class="chamber-section">
+              <div class="chamber-label-row">
+                <label class="section-micro-label">Số buồng máy (1 – 6 buồng):</label>
+                <span id="selectedChamberBadge" class="selected-chamber-badge">Chưa chọn buồng</span>
+              </div>
+              <div class="chamber-btn-row compact-chamber-row" id="chamberSelector">
+                <button type="button" class="btn-chamber-sm" data-chamber="1">1</button>
+                <button type="button" class="btn-chamber-sm" data-chamber="2">2</button>
+                <button type="button" class="btn-chamber-sm" data-chamber="3">3</button>
+                <button type="button" class="btn-chamber-sm" data-chamber="4">4</button>
+                <button type="button" class="btn-chamber-sm" data-chamber="5">5</button>
+                <button type="button" class="btn-chamber-sm" data-chamber="6">6</button>
+              </div>
+              <input type="hidden" id="inputChamber" value="">
             </div>
 
-            <!-- Quick Add Chips -->
-            <div class="quick-add-row">
-              <button type="button" class="btn-quick-add" data-add="10">+10</button>
-              <button type="button" class="btn-quick-add" data-add="50">+50</button>
-              <button type="button" class="btn-quick-add" data-add="100">+100</button>
-              <button type="button" class="btn-quick-add" data-add="200">+200</button>
+            <!-- QUANTITY DISPLAY BOX -->
+            <div class="qty-section">
+              <div class="qty-label-row">
+                <label class="section-micro-label" for="inputQuantity">Số lượng xử lý:</label>
+              </div>
+              <div class="qty-input-box">
+                <input 
+                  type="number" 
+                  id="inputQuantity" 
+                  class="form-control form-control-giant font-mono text-center" 
+                  placeholder="0"
+                  min="1"
+                  step="1"
+                  inputmode="numeric"
+                >
+                <span class="qty-unit-tag">PCS</span>
+              </div>
+
+              <!-- Quick Add Chips -->
+              <div class="quick-add-row">
+                <button type="button" class="btn-quick-add" data-add="10">+10</button>
+                <button type="button" class="btn-quick-add" data-add="50">+50</button>
+                <button type="button" class="btn-quick-add" data-add="100">+100</button>
+                <button type="button" class="btn-quick-add" data-add="200">+200</button>
+              </div>
             </div>
           </div>
 
@@ -318,7 +415,7 @@
               </div>
             </button>
             <div id="submitValidationHint" class="submit-validation-hint">
-              Vui lòng nhập Mã nhân viên, Mã sản phẩm, Buồng và Số lượng để lưu
+              Vui lòng hoàn thành các bước để lưu lượt
             </div>
           </div>
 
@@ -344,6 +441,12 @@
         </div>
 
         <div class="manager-header-right">
+          <!-- Settings Modal Trigger -->
+          <button type="button" id="btnOpenSettingsManager" class="btn-pill-action" style="padding: 7px 14px; font-size: 0.88rem; background: var(--bg-card); border-color: var(--smc-blue); color: var(--smc-blue);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Cài đặt Máy & Người</span>
+          </button>
+
           <!-- Excel Export -->
           <button type="button" id="btnExportExcel" class="btn-action-excel">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -414,11 +517,7 @@
             <span class="kpi-sub">Line SMC3</span>
           </div>
           <div class="kpi-body-machines" id="kpiMachinesList">
-            <span class="machine-tag"><b id="kpiMachine1Count">SA01_SB01: 0 lượt</b></span>
-            <span class="machine-tag"><b id="kpiMachine2Count">SA01_SB02: 0 lượt</b></span>
-            <span class="machine-tag"><b id="kpiMachine3Count">SA01_SB03: 0 lượt</b></span>
-            <span class="machine-tag"><b id="kpiMachine4Count">SA01_SB04: 0 lượt</b></span>
-            <span class="machine-tag"><b id="kpiMachine5Count">SA01_SB05: 0 lượt</b></span>
+            <!-- Dynamically populated tags for machines -->
           </div>
         </div>
       </div>
@@ -435,19 +534,20 @@
             <!-- Filter Ca -->
             <select id="filterShift" class="form-select-sm">
               <option value="">Tất cả Ca</option>
-              <option value="1">Ca 1</option>
-              <option value="2">Ca 2</option>
-              <option value="3">Ca 3</option>
+              <option value="1">Ca 1 (06:00–14:00)</option>
+              <option value="2">Ca 2 (14:00–22:00)</option>
+              <option value="3">Ca 3 (22:00–06:00)</option>
             </select>
 
             <!-- Filter Machine -->
             <select id="filterMachine" class="form-select-sm">
-              <option value="">Tất cả Máy (5 Máy)</option>
+              <option value="">Tất cả Máy</option>
               <option value="SA01_SB01">SA01_SB01</option>
               <option value="SA01_SB02">SA01_SB02</option>
               <option value="SA01_SB03">SA01_SB03</option>
               <option value="SA01_SB04">SA01_SB04</option>
               <option value="SA01_SB05">SA01_SB05</option>
+              <option value="LA02_SB01">LA02_SB01</option>
             </select>
           </div>
         </div>
@@ -458,14 +558,16 @@
             <thead>
               <tr>
                 <th class="col-turn">Lượt<br><span class="jp-sub">回</span></th>
-                <th class="col-time">Thời gian</th>
+                <th class="col-time">Thời gian ghi</th>
+                <th class="col-time-start">Bắt đầu<br><span class="jp-sub">開始</span></th>
+                <th class="col-time-end">Dừng<br><span class="jp-sub">停止</span></th>
                 <th class="col-shift">Ca<br><span class="jp-sub">直</span></th>
-                <th class="col-machine">Thiết bị<br><span class="jp-sub">機械番号</span></th>
+                <th class="col-machine">Máy<br><span class="jp-sub">機械番号</span></th>
                 <th class="col-code">Mã sản phẩm<br><span class="jp-sub">品番</span></th>
                 <th class="col-qty col-yellow">Số lượng xử lý<br><span class="jp-sub">生産数 (PCS)</span></th>
                 <th class="col-chamber col-yellow">Số buồng<br><span class="jp-sub">チャンバー</span></th>
                 <th class="col-setting">Định mức cái/lượt<br><span class="jp-sub">設定 数/バッチ</span></th>
-                <th class="col-worker">Công nhân</th>
+                <th class="col-worker">Người thao tác<br><span class="jp-sub">担当者</span></th>
                 <th class="col-actions">Thao tác</th>
               </tr>
             </thead>
@@ -474,7 +576,7 @@
             </tbody>
             <tfoot>
               <tr class="table-summary-row">
-                <td colspan="5" class="text-right"><b>Tổng cộng:</b></td>
+                <td colspan="7" class="text-right"><b>Tổng cộng:</b></td>
                 <td id="tableFooterTotalQty" class="text-accent text-bold text-center col-yellow font-mono text-lg">0</td>
                 <td colspan="4" class="text-muted text-sm" id="tableFooterSummary">0 lượt ghi nhận</td>
               </tr>
@@ -511,8 +613,12 @@
             <b id="successQtyDisplay" class="s-val">14 PCS · 1 Buồng</b>
           </div>
           <div class="success-line">
-            <span class="s-label">Vận hành:</span>
-            <b id="successWorkerDisplay" class="s-val">Nguyễn Văn A · SA01_SB01 (Ca 1)</b>
+            <span class="s-label">Thời gian bắn:</span>
+            <b id="successTimeDisplay" class="s-val font-mono">08:00 – 08:25</b>
+          </div>
+          <div class="success-line">
+            <span class="s-label">Người thao tác:</span>
+            <b id="successWorkerDisplay" class="s-val">Nguyễn Công Hải · SA01_SB02 (Ca 1)</b>
           </div>
         </div>
 
@@ -758,27 +864,46 @@
         <div class="modal-body">
           <form id="editBatchForm" onsubmit="return false;">
             <input type="hidden" id="editBatchId">
-            <div class="form-group">
-              <label class="form-label">Lượt số:</label>
-              <input type="number" id="editTurn" class="form-control" readonly>
-            </div>
             <div class="form-row-grid">
               <div class="form-group">
-                <label class="form-label">Thiết bị:</label>
-                <select id="editMachine" class="form-control">
+                <label class="form-label">Lượt số:</label>
+                <input type="number" id="editTurn" class="form-control font-mono" readonly>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Người thao tác:</label>
+                <input type="text" id="editWorker" class="form-control">
+              </div>
+            </div>
+
+            <div class="form-row-grid">
+              <div class="form-group">
+                <label class="form-label">Giờ Bắt đầu (HH:mm):</label>
+                <input type="time" id="editStartTime" class="form-control font-mono">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Giờ Dừng (HH:mm):</label>
+                <input type="time" id="editEndTime" class="form-control font-mono">
+              </div>
+            </div>
+
+            <div class="form-row-grid">
+              <div class="form-group">
+                <label class="form-label">Thiết bị (Máy):</label>
+                <select id="editMachine" class="form-control font-mono">
                   <option value="SA01_SB01">SA01_SB01</option>
                   <option value="SA01_SB02">SA01_SB02</option>
                   <option value="SA01_SB03">SA01_SB03</option>
                   <option value="SA01_SB04">SA01_SB04</option>
                   <option value="SA01_SB05">SA01_SB05</option>
+                  <option value="LA02_SB01">LA02_SB01</option>
                 </select>
               </div>
               <div class="form-group">
                 <label class="form-label">Ca:</label>
                 <select id="editShift" class="form-control">
-                  <option value="1">Ca 1</option>
-                  <option value="2">Ca 2</option>
-                  <option value="3">Ca 3</option>
+                  <option value="1">Ca 1 (06:00–14:00)</option>
+                  <option value="2">Ca 2 (14:00–22:00)</option>
+                  <option value="3">Ca 3 (22:00–06:00)</option>
                 </select>
               </div>
             </div>
@@ -808,6 +933,115 @@
               <button type="button" class="btn-primary" id="btnSaveEditBatch">Lưu thay đổi</button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         MODAL: SETTINGS (MÁY BẮN BI & NGƯỜI THAO TÁC)
+         ====================================================================== -->
+    <div id="settingsModal" class="modal-overlay hidden">
+      <div class="modal-card settings-modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">⚙️</span>
+            <h3>Cài đặt Hệ thống: Máy bắn bi & Người thao tác</h3>
+          </div>
+          <button type="button" class="btn-close-modal" id="btnCloseSettingsModal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-tab-bar">
+            <button type="button" id="tabSettingsMachines" class="settings-tab-btn active">
+              🏭 Danh sách Máy bắn bi
+            </button>
+            <button type="button" id="tabSettingsWorkers" class="settings-tab-btn">
+              👥 Danh sách Người thao tác
+            </button>
+          </div>
+
+          <!-- TAB CONTENT 1: MACHINES -->
+          <div id="settingsContentMachines" class="settings-content-panel">
+            <div class="settings-desc">
+              Quản lý các mã máy shotblast hiển thị ở <b>Bước 1</b>. Bạn có thể thêm mã máy mới hoặc xóa mã:
+            </div>
+            <div class="settings-add-row">
+              <input type="text" id="inputNewMachineCode" class="form-control font-mono" placeholder="Nhập mã máy mới (VD: SA01_SB06, LA02_SB02)...">
+              <button type="button" id="btnAddMachine" class="btn-primary">➕ Thêm máy</button>
+            </div>
+            <div class="settings-table-wrap">
+              <table class="settings-table">
+                <thead>
+                  <tr>
+                    <th style="width: 50px;">STT</th>
+                    <th>Mã máy</th>
+                    <th style="width: 100px;">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="machinesTableBody"></tbody>
+              </table>
+            </div>
+            <div class="settings-footer-actions">
+              <button type="button" id="btnResetDefaultMachines" class="btn-secondary text-sm">
+                ↺ Khôi phục danh sách máy mặc định
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB CONTENT 2: WORKERS -->
+          <div id="settingsContentWorkers" class="settings-content-panel hidden">
+            <div class="settings-desc">
+              Quản lý người thao tác. Mã số nhân viên (MSNV) dùng để quét hoặc tìm kiếm ở <b>Bước 2</b>:
+            </div>
+            
+            <div class="worker-editor-card">
+              <h4 id="workerEditorTitle" class="editor-subtitle">Thêm người thao tác mới</h4>
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label text-sm">Họ và tên:</label>
+                  <input type="text" id="inputEditWorkerName" class="form-control" placeholder="VD: Nguyễn Công Hải">
+                </div>
+                <div class="form-group">
+                  <label class="form-label text-sm">Mã nhân viên (MSNV):</label>
+                  <input type="text" id="inputEditWorkerId" class="form-control font-mono" placeholder="VD: 02623124">
+                </div>
+              </div>
+              <div class="form-row-grid">
+                <div class="form-group">
+                  <label class="form-label text-sm">Máy phụ trách (phân cách dấu phẩy, VD: SA01_SB01, SA01_SB02):</label>
+                  <input type="text" id="inputEditWorkerMachine" class="form-control font-mono" placeholder="SA01_SB01, SA01_SB02">
+                </div>
+                <div class="form-group">
+                  <label class="form-label text-sm">Chức danh / Vai trò:</label>
+                  <input type="text" id="inputEditWorkerRole" class="form-control" placeholder="Công nhân vận hành">
+                </div>
+              </div>
+              <div class="editor-actions">
+                <button type="button" id="btnCancelEditWorker" class="btn-secondary hidden">Hủy sửa</button>
+                <button type="button" id="btnSaveWorker" class="btn-primary">💾 Lưu người thao tác</button>
+              </div>
+            </div>
+
+            <div class="settings-table-wrap">
+              <table class="settings-table">
+                <thead>
+                  <tr>
+                    <th style="width: 45px;">STT</th>
+                    <th>Họ và tên</th>
+                    <th>MSNV</th>
+                    <th>Máy ưu tiên</th>
+                    <th>Vai trò</th>
+                    <th style="width: 110px;">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="workersTableBody"></tbody>
+              </table>
+            </div>
+            <div class="settings-footer-actions">
+              <button type="button" id="btnResetDefaultWorkers" class="btn-secondary text-sm">
+                ↺ Khôi phục danh sách người mặc định (Seed)
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

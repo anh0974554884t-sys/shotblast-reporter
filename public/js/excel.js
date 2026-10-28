@@ -53,15 +53,17 @@ function exportProductionToExcel(batches, products, meta = {}) {
     "固定",       // Công đoạn
     "機械番号",   // Mã số thiết bị
     "回",         // Lượt
+    "開始",       // Bắt đầu
+    "停止",       // Dừng
     "品番",       // Mã sản phẩm
     "生産数 (個)",// Số lượng xử lý
     "チャンバー数",// Số buồng
     "設定 数/バッチ (個)", // SL/lượt đặt
     "登録日時",    // Thời gian ghi
-    "担当者"      // Người thực hiện
+    "担当者"      // Người thao tác
   ]);
 
-  // Row 5: Vietnamese Headers (Matching exact photo columns)
+  // Row 5: Vietnamese Headers (Matching factory standards)
   sheetData.push([
     "Tháng",
     "Ca",
@@ -69,12 +71,14 @@ function exportProductionToExcel(batches, products, meta = {}) {
     "Công Đoạn",
     "Mã số thiết bị",
     "Lượt",
+    "Bắt đầu",
+    "Dừng",
     "Mã sản phẩm",
     "Số lượng xử lý",
     "Số buồng",
     "SL/lượt đặt",
-    "Thời gian",
-    "Công nhân"
+    "Thời gian ghi",
+    "Người thao tác"
   ]);
 
   // Row 6+: Data rows
@@ -93,12 +97,14 @@ function exportProductionToExcel(batches, products, meta = {}) {
       b.stage || stageStr,
       b.machine || 'SA01_SB01',
       b.turn || (idx + 1),
+      b.startTime || '',
+      b.endTime || '',
       b.productCode || '',
       Number(b.quantity) || 0,
       Number(b.chamber) || 1,
       Number(b.settingQty) || 0,
       timeFormatted,
-      b.worker || 'V.T.Hiếu'
+      b.operator || b.worker || 'Người thao tác'
     ]);
   });
 
@@ -106,7 +112,7 @@ function exportProductionToExcel(batches, products, meta = {}) {
   sheetData.push([]);
   sheetData.push([
     "TỔNG CỘNG:",
-    "", "", "", "",
+    "", "", "", "", "", "",
     `${batches.length} lượt`,
     "",
     totalQty,
@@ -127,12 +133,14 @@ function exportProductionToExcel(batches, products, meta = {}) {
     { wch: 14 }, // Công đoạn
     { wch: 16 }, // Mã thiết bị
     { wch: 8 },  // Lượt
+    { wch: 10 }, // Bắt đầu
+    { wch: 10 }, // Dừng
     { wch: 22 }, // Mã sản phẩm
     { wch: 16 }, // Số lượng xử lý
     { wch: 12 }, // Số buồng
     { wch: 20 }, // SL/lượt đặt
-    { wch: 20 }, // Thời gian
-    { wch: 14 }  // Người thực hiện
+    { wch: 20 }, // Thời gian ghi
+    { wch: 18 }  // Người thao tác
   ];
 
   // Append Sheet 1 (Name: '1' or 'Bao_Cao_Ngay')

@@ -16,22 +16,6 @@
     "worker": "Nguyễn Văn A"
   },
   {
-    "id": "sb_1792853139602_814",
-    "date": "2026-10-24",
-    "month": "2026-10",
-    "shift": 1,
-    "line": "SMC3",
-    "stage": "Shotblast",
-    "machine": "SA01_SB01",
-    "turn": 2,
-    "productCode": "P3800201C-020",
-    "quantity": 165,
-    "chamber": 3,
-    "settingQty": 165,
-    "timestamp": "2026-10-24T14:45:38.902Z",
-    "worker": "Nguyễn Văn A"
-  },
-  {
     "id": "sb_1792897849680_240",
     "date": "2026-10-25",
     "month": "2026-10",
@@ -62,21 +46,5 @@
     "settingQty": 963,
     "timestamp": "2026-10-25T03:11:17.599Z",
     "worker": "Vũ Trung Hiếu"
-  },
-  {
-    "id": "sb_1792898095043_709",
-    "date": "2026-10-25",
-    "month": "2026-10",
-    "shift": 1,
-    "line": "SMC3",
-    "stage": "Shotblast",
-    "machine": "SA01_SB01",
-    "turn": 3,
-    "productCode": "P3800201C-020",
-    "quantity": 1337,
-    "chamber": 3,
-    "settingQty": 1337,
-    "timestamp": "2026-10-25T03:14:53.523Z",
-    "worker": "Nguyễn Văn A"
   }
 ]

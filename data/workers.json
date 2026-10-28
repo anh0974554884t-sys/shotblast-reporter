@@ -1,107 +1,107 @@
 [
   {
-    "id": "101",
-    "name": "Nguyễn Văn A",
-    "shift": 1,
-    "machine": "SA01_SB01",
-    "role": "Công nhân vận hành"
-  },
-  {
-    "id": "102",
-    "name": "Trần Văn Bình",
-    "shift": 1,
+    "id": "02623124",
+    "name": "Nguyễn Công Hải",
+    "machines": ["SA01_SB02"],
     "machine": "SA01_SB02",
     "role": "Công nhân vận hành"
   },
   {
-    "id": "103",
-    "name": "Vũ Trung Hiếu",
-    "shift": 1,
-    "machine": "SA01_SB03",
+    "id": "02620127",
+    "name": "Lê Duy Tuấn",
+    "machines": ["SA01_SB03", "SA01_SB04"],
+    "machine": "SA01_SB03, SA01_SB04",
     "role": "Công nhân vận hành"
   },
   {
-    "id": "104",
-    "name": "Lê Văn Cường",
-    "shift": 1,
-    "machine": "SA01_SB04",
-    "role": "Công nhân vận hành"
+    "id": "02524300",
+    "name": "Nguyễn Văn Kiên",
+    "machines": ["SA01_SB01", "SA01_SB02"],
+    "machine": "SA01_SB01, SA01_SB02",
+    "role": "Leader shotblast"
   },
   {
-    "id": "105",
-    "name": "Võ Văn Kiên",
-    "shift": 1,
-    "machine": "SA01_SB05",
-    "role": "Công nhân vận hành"
+    "id": "02526502",
+    "name": "Trịnh Trần Huỳnh Hiệp",
+    "machines": ["SA01_SB01", "SA01_SB02"],
+    "machine": "SA01_SB01, SA01_SB02",
+    "role": "Leader shotblast"
   },
   {
-    "id": "201",
-    "name": "Phạm Văn Dũng",
-    "shift": 2,
+    "id": "02623115",
+    "name": "Nguyễn Văn Sỹ",
+    "machines": ["SA01_SB01"],
     "machine": "SA01_SB01",
     "role": "Công nhân vận hành"
   },
   {
-    "id": "202",
-    "name": "Hoàng Đức Thịnh",
-    "shift": 2,
+    "id": "02620534",
+    "name": "Nguyễn Ngọc Tiến",
+    "machines": ["SA01_SB02"],
     "machine": "SA01_SB02",
     "role": "Công nhân vận hành"
   },
   {
-    "id": "203",
-    "name": "Đặng Quốc Hưng",
-    "shift": 2,
-    "machine": "SA01_SB03",
-    "role": "Công nhân vận hành"
+    "id": "02627625",
+    "name": "Nguyễn Hữu Nghĩa",
+    "machines": ["SA01_SB01", "SA01_SB02"],
+    "machine": "SA01_SB01, SA01_SB02",
+    "role": "Leader shotblast"
   },
   {
-    "id": "204",
-    "name": "Bùi Văn Nam",
-    "shift": 2,
-    "machine": "SA01_SB04",
-    "role": "Công nhân vận hành"
-  },
-  {
-    "id": "205",
-    "name": "Dương Văn Thắng",
-    "shift": 2,
-    "machine": "SA01_SB05",
-    "role": "Công nhân vận hành"
-  },
-  {
-    "id": "301",
-    "name": "Đỗ Văn Toàn",
-    "shift": 3,
+    "id": "02629580",
+    "name": "Phan Nhật Trường",
+    "machines": ["SA01_SB01"],
     "machine": "SA01_SB01",
     "role": "Công nhân vận hành"
   },
   {
-    "id": "302",
-    "name": "Ngô Văn Tuấn",
-    "shift": 3,
+    "id": "02629599",
+    "name": "Đặng Minh Phương Hiệp",
+    "machines": ["SA01_SB01"],
+    "machine": "SA01_SB01",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "02622295",
+    "name": "Nguyễn Hoàng Huy",
+    "machines": ["SA01_SB02"],
     "machine": "SA01_SB02",
     "role": "Công nhân vận hành"
   },
   {
-    "id": "303",
-    "name": "Trịnh Hoàng Long",
-    "shift": 3,
-    "machine": "SA01_SB03",
+    "id": "02520340",
+    "name": "Lê Duy Hải",
+    "machines": ["SA01_SB03", "SA01_SB04"],
+    "machine": "SA01_SB03, SA01_SB04",
     "role": "Công nhân vận hành"
   },
   {
-    "id": "304",
-    "name": "Lý Văn Phát",
-    "shift": 3,
-    "machine": "SA01_SB04",
+    "id": "02646462",
+    "name": "Nguyễn Nhất Tâm",
+    "machines": ["LA02_SB01"],
+    "machine": "LA02_SB01",
     "role": "Công nhân vận hành"
   },
   {
-    "id": "305",
-    "name": "Lâm Văn Hải",
-    "shift": 3,
+    "id": "02622462",
+    "name": "Huỳnh Chí Cường",
+    "machines": ["SA01_SB05"],
     "machine": "SA01_SB05",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "02642721",
+    "name": "Trương Văn Thiện",
+    "machines": ["LA02_SB01"],
+    "machine": "LA02_SB01",
+    "role": "Công nhân vận hành"
+  },
+  {
+    "id": "02644589",
+    "name": "Phan Văn Tuyên",
+    "machines": ["SA01_SB03", "SA01_SB04"],
+    "machine": "SA01_SB03, SA01_SB04",
     "role": "Công nhân vận hành"
   }
 ]
