@@ -2094,9 +2094,14 @@ class ShotblastApp {
     // Balanced Touch Numpad
     const padBtns = this.elements.touchNumpad.querySelectorAll('.btn-pad');
     padBtns.forEach(btn => {
-      // Giu nguyen gia tri gio da nhap va luon chuyen ban phim sang o So luong.
-      btn.addEventListener('pointerdown', (e) => e.preventDefault());
+      // Khong chan pointerdown/touchstart: tren dien thoai, trinh chon gio
+      // can su kien blur mac dinh de cam ket gia tri HH:mm truoc khi bam so luong.
       btn.addEventListener('click', () => {
+        // Buoc trinh duyet di dong hoan tat gia tri time truoc khi doi dich nhap.
+        const active = document.activeElement;
+        if (active === this.elements.inputStartTime || active === this.elements.inputEndTime) {
+          active.blur();
+        }
         this.focusedInput = this.elements.inputQuantity;
         const val = btn.getAttribute('data-val');
         if (val) this.handleNumpad(val);
