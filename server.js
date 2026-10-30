@@ -4,6 +4,8 @@ const path = require('path');
 const os = require('os');
 const url = require('url');
 const { spawn, execSync } = require('child_process');
+const crypto = require('crypto');
+const pool = require('./db');
 
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
@@ -167,7 +169,75 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
-  // --- API ROUTES ---
+  // --- API ROUTES (POSTGRESQL) ---
+  function vnDateString() {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+  }
+
+  function mapBatch(row) {
+    return {
+      id: row.id,
+      date: row.production_date instanceof Date
+        ? row.production_date.toISOString().slice(0, 10)
+        : String(row.production_date).slice(0, 10),
+      month: row.production_month,
+      shift: row.shift,
+      line: row.line,
+      stage: row.stage,
+      machine: row.machine_code,
+      turn: row.turn_number,
+      startTime: row.start_time || '',
+      endTime: row.end_time || '',
+      productCode: row.product_code,
+      quantity: row.quantity,
+      chamber: row.chamber,
+      settingQty: row.setting_qty,
+      timestamp: row.recorded_at,
+      worker: row.worker_name || row.operator_name || '',
+      operator: row.operator_name || row.worker_name || '',
+      operatorId: row.operator_id || ''
+    };
+  }
+
+  function mapProduct(row) {
+    return {
+      id: row.id,
+      stt: row.stt,
+      code: row.code,
+      factory: row.factory || '',
+      category: row.category || '',
+      series: row.series || '',
+      name: row.name || '',
+      settingQty: row.setting_qty,
+      notes: row.notes || ''
+    };
+  }
+
+  function mapWorker(row) {
+    const machines = Array.isArray(row.machines) ? row.machines : [];
+    return {
+      id: row.employee_id,
+      employeeId: row.employee_id,
+      name: row.name,
+      shift: row.shift,
+      machines,
+      machine: machines.join(', '),
+      role: row.role,
+      active: row.active
+    };
+  }
+
+  async function databaseError(res, err) {
+    console.error('PostgreSQL error:', err);
+    return sendJSON(res, 500, {
+      error: 'Lỗi cơ sở dữ liệu. Dữ liệu chưa được lưu.',
+      detail: process.env.NODE_ENV === 'production' ? undefined : err.message
+    });
+  }
+
   if (pathname === '/api/info' && method === 'GET') {
     let tunnelUrl = null;
     try {
@@ -175,258 +245,277 @@ const server = http.createServer(async (req, res) => {
       if (fs.existsSync(tunnelFile)) {
         tunnelUrl = JSON.parse(fs.readFileSync(tunnelFile, 'utf8')).url;
       }
-    } catch (e) {}
-
-    return sendJSON(res, 200, {
-      status: 'online',
-      serverTime: new Date().toISOString(),
-      addresses: getNetworkAddresses(),
-      port: PORT,
-      tunnelUrl: tunnelUrl
-    });
+      const dbResult = await pool.query('SELECT NOW() AS server_time');
+      return sendJSON(res, 200, {
+        status: 'online', database: 'online',
+        serverTime: dbResult.rows[0].server_time,
+        addresses: getNetworkAddresses(), port: PORT, tunnelUrl
+      });
+    } catch (err) {
+      return sendJSON(res, 503, {
+        status: 'degraded', database: 'offline',
+        serverTime: new Date().toISOString(),
+        addresses: getNetworkAddresses(), port: PORT, tunnelUrl
+      });
+    }
   }
 
-  // GET Batches
   if (pathname === '/api/batches' && method === 'GET') {
-    const batches = readJSON(BATCHES_FILE, []);
-    const { date, shift, machine } = parsedUrl.query;
-    let filtered = batches;
-    if (date) filtered = filtered.filter(b => b.date === date);
-    if (shift) filtered = filtered.filter(b => String(b.shift) === String(shift));
-    if (machine) filtered = filtered.filter(b => b.machine === machine);
-    return sendJSON(res, 200, filtered);
+    try {
+      const clauses = [];
+      const params = [];
+      const { date, shift, machine } = parsedUrl.query;
+      if (date) { params.push(date); clauses.push(`production_date = $${params.length}`); }
+      if (shift) { params.push(Number(shift)); clauses.push(`shift = $${params.length}`); }
+      if (machine) { params.push(machine); clauses.push(`machine_code = $${params.length}`); }
+      const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+      const result = await pool.query(
+        `SELECT * FROM production_batches ${where}
+         ORDER BY production_date DESC, recorded_at DESC`, params
+      );
+      return sendJSON(res, 200, result.rows.map(mapBatch));
+    } catch (err) { return databaseError(res, err); }
   }
 
-  // POST Add Batch
   if (pathname === '/api/batches' && method === 'POST') {
+    let client;
     try {
       const payload = await parseRequestBody(req);
-      const batches = readJSON(BATCHES_FILE, []);
-
-      // Calculate next turn for current date & shift (or continuous)
-      const now = new Date();
-      const todayStr = payload.date || now.toISOString().split('T')[0];
-      const monthStr = payload.month || todayStr.substring(0, 7);
-
-      const existingToday = batches.filter(b => b.date === todayStr);
-      const nextTurn = payload.turn ? Number(payload.turn) : (existingToday.length + 1);
-
-      const newBatch = {
-        id: 'sb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-        date: todayStr,
-        month: monthStr,
-        shift: Number(payload.shift) || 1,
-        line: payload.line || 'SMC3',
-        stage: payload.stage || 'Shotblast',
-        machine: payload.machine || 'SA01_SB01',
-        turn: nextTurn,
-        startTime: payload.startTime || '',
-        endTime: payload.endTime || '',
-        productCode: (payload.productCode || '').trim().toUpperCase(),
-        quantity: Number(payload.quantity) || 0,
-        chamber: Number(payload.chamber) || 1,
-        settingQty: Number(payload.settingQty) || 0,
-        timestamp: payload.timestamp || now.toISOString(),
-        worker: payload.worker || payload.operator || 'Người thao tác',
-        operator: payload.operator || payload.worker || 'Người thao tác',
-        operatorId: payload.operatorId || ''
-      };
-
-      batches.push(newBatch);
-      writeJSON(BATCHES_FILE, batches);
-      return sendJSON(res, 201, { success: true, batch: newBatch, totalCount: batches.length });
-    } catch (err) {
-      return sendJSON(res, 400, { error: err.message });
-    }
-  }
-
-  // PUT Update Batch
-  if (pathname.startsWith('/api/batches/') && method === 'PUT') {
-    const id = pathname.replace('/api/batches/', '');
-    try {
-      const payload = await parseRequestBody(req);
-      const batches = readJSON(BATCHES_FILE, []);
-      const idx = batches.findIndex(b => b.id === id);
-      if (idx === -1) {
-        return sendJSON(res, 404, { error: 'Không tìm thấy lượt ghi nhận' });
+      const productionDate = payload.date || vnDateString();
+      const productionMonth = payload.month || productionDate.slice(0, 7);
+      const machine = String(payload.machine || '').trim();
+      const shift = Number(payload.shift) || 1;
+      const productCode = String(payload.productCode || '').trim().toUpperCase();
+      const quantity = Number(payload.quantity);
+      const chamber = Number(payload.chamber);
+      if (!machine || !productCode || !Number.isFinite(quantity) || quantity < 0 || chamber < 1 || chamber > 6) {
+        return sendJSON(res, 400, { error: 'Dữ liệu báo cáo không hợp lệ' });
       }
-
-      batches[idx] = {
-        ...batches[idx],
-        shift: payload.shift !== undefined ? Number(payload.shift) : batches[idx].shift,
-        machine: payload.machine || batches[idx].machine,
-        turn: payload.turn !== undefined ? Number(payload.turn) : batches[idx].turn,
-        startTime: payload.startTime !== undefined ? payload.startTime : (batches[idx].startTime || ''),
-        endTime: payload.endTime !== undefined ? payload.endTime : (batches[idx].endTime || ''),
-        productCode: payload.productCode !== undefined ? payload.productCode.trim().toUpperCase() : batches[idx].productCode,
-        quantity: payload.quantity !== undefined ? Number(payload.quantity) : batches[idx].quantity,
-        chamber: payload.chamber !== undefined ? Number(payload.chamber) : batches[idx].chamber,
-        settingQty: payload.settingQty !== undefined ? Number(payload.settingQty) : batches[idx].settingQty,
-        worker: payload.worker || payload.operator || batches[idx].worker,
-        operator: payload.operator || payload.worker || batches[idx].operator,
-        operatorId: payload.operatorId !== undefined ? payload.operatorId : batches[idx].operatorId
-      };
-
-      writeJSON(BATCHES_FILE, batches);
-      return sendJSON(res, 200, { success: true, batch: batches[idx] });
+      client = await pool.connect();
+      await client.query('BEGIN');
+      await client.query(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        [`${productionDate}|${machine}|${shift}`]
+      );
+      let turn = Number(payload.turn);
+      if (!Number.isInteger(turn) || turn < 1) {
+        const turnResult = await client.query(
+          `SELECT COALESCE(MAX(turn_number), 0) + 1 AS next_turn
+           FROM production_batches
+           WHERE production_date = $1 AND machine_code = $2 AND shift = $3`,
+          [productionDate, machine, shift]
+        );
+        turn = Number(turnResult.rows[0].next_turn);
+      }
+      const id = `sb_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      const result = await client.query(
+        `INSERT INTO production_batches (
+          id, production_date, production_month, shift, line, stage,
+          machine_code, turn_number, start_time, end_time, product_code,
+          quantity, chamber, setting_qty, worker_name, operator_name,
+          operator_id, recorded_at, updated_at
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,NOW()
+        ) RETURNING *`,
+        [
+          id, productionDate, productionMonth, shift,
+          payload.line || 'SMC3', payload.stage || 'Shotblast', machine, turn,
+          payload.startTime || '', payload.endTime || '', productCode,
+          quantity, chamber, Number(payload.settingQty) || 0,
+          payload.worker || payload.operator || 'Người thao tác',
+          payload.operator || payload.worker || 'Người thao tác',
+          String(payload.operatorId || ''), payload.timestamp || new Date().toISOString()
+        ]
+      );
+      await client.query('COMMIT');
+      const count = await pool.query('SELECT COUNT(*)::INTEGER AS total FROM production_batches');
+      return sendJSON(res, 201, {
+        success: true, batch: mapBatch(result.rows[0]), totalCount: count.rows[0].total
+      });
     } catch (err) {
-      return sendJSON(res, 400, { error: err.message });
+      if (client) { try { await client.query('ROLLBACK'); } catch (_) {} }
+      if (err.code === '23505') return sendJSON(res, 409, { error: 'Số lượt đã tồn tại. Hãy tải lại và lưu lại.' });
+      if (err.code === '23503') return sendJSON(res, 400, { error: 'Mã máy không tồn tại hoặc chưa kích hoạt.' });
+      return databaseError(res, err);
+    } finally { if (client) client.release(); }
+  }
+
+  if (pathname.startsWith('/api/batches/') && method === 'PUT') {
+    try {
+      const id = decodeURIComponent(pathname.slice('/api/batches/'.length));
+      const payload = await parseRequestBody(req);
+      const current = await pool.query('SELECT * FROM production_batches WHERE id = $1', [id]);
+      if (!current.rowCount) return sendJSON(res, 404, { error: 'Không tìm thấy lượt ghi nhận' });
+      const old = current.rows[0];
+      const result = await pool.query(
+        `UPDATE production_batches SET
+          shift=$2, machine_code=$3, turn_number=$4, start_time=$5, end_time=$6,
+          product_code=$7, quantity=$8, chamber=$9, setting_qty=$10,
+          worker_name=$11, operator_name=$12, operator_id=$13, updated_at=NOW()
+         WHERE id=$1 RETURNING *`,
+        [
+          id,
+          payload.shift !== undefined ? Number(payload.shift) : old.shift,
+          payload.machine || old.machine_code,
+          payload.turn !== undefined ? Number(payload.turn) : old.turn_number,
+          payload.startTime !== undefined ? payload.startTime : old.start_time,
+          payload.endTime !== undefined ? payload.endTime : old.end_time,
+          payload.productCode !== undefined ? String(payload.productCode).trim().toUpperCase() : old.product_code,
+          payload.quantity !== undefined ? Number(payload.quantity) : old.quantity,
+          payload.chamber !== undefined ? Number(payload.chamber) : old.chamber,
+          payload.settingQty !== undefined ? Number(payload.settingQty) : old.setting_qty,
+          payload.worker || payload.operator || old.worker_name,
+          payload.operator || payload.worker || old.operator_name,
+          payload.operatorId !== undefined ? String(payload.operatorId) : old.operator_id
+        ]
+      );
+      return sendJSON(res, 200, { success: true, batch: mapBatch(result.rows[0]) });
+    } catch (err) {
+      if (err.code === '23505') return sendJSON(res, 409, { error: 'Số lượt đã tồn tại.' });
+      return databaseError(res, err);
     }
   }
 
-  // DELETE Batch (Single or All)
   if (pathname === '/api/batches' && method === 'DELETE') {
-    writeJSON(BATCHES_FILE, []);
-    return sendJSON(res, 200, { success: true, message: 'Đã xóa toàn bộ dữ liệu lượt' });
+    try {
+      const result = await pool.query('DELETE FROM production_batches');
+      return sendJSON(res, 200, { success: true, deleted: result.rowCount, message: 'Đã xóa toàn bộ dữ liệu lượt' });
+    } catch (err) { return databaseError(res, err); }
   }
 
   if (pathname.startsWith('/api/batches/') && method === 'DELETE') {
-    const id = pathname.replace('/api/batches/', '');
-    const batches = readJSON(BATCHES_FILE, []);
-    const filtered = batches.filter(b => b.id !== id);
-    writeJSON(BATCHES_FILE, filtered);
-    return sendJSON(res, 200, { success: true, remaining: filtered.length });
+    try {
+      const id = decodeURIComponent(pathname.slice('/api/batches/'.length));
+      const result = await pool.query('DELETE FROM production_batches WHERE id=$1', [id]);
+      const count = await pool.query('SELECT COUNT(*)::INTEGER AS total FROM production_batches');
+      return sendJSON(res, result.rowCount ? 200 : 404, {
+        success: Boolean(result.rowCount), remaining: count.rows[0].total
+      });
+    } catch (err) { return databaseError(res, err); }
   }
 
-  // GET Products (DSSP)
   if (pathname === '/api/products' && method === 'GET') {
-    const products = readJSON(PRODUCTS_FILE, []);
-    return sendJSON(res, 200, products);
+    try {
+      const result = await pool.query('SELECT * FROM products WHERE active=TRUE ORDER BY stt NULLS LAST, code');
+      return sendJSON(res, 200, result.rows.map(mapProduct));
+    } catch (err) { return databaseError(res, err); }
   }
 
-  // GET Single Product by Code (e.g., /api/product/MGP20ABAC893A075)
   if ((pathname.startsWith('/api/product/') || pathname.startsWith('/api/products/')) && method === 'GET') {
-    const rawCode = decodeURIComponent(pathname.replace(/^\/api\/products?\//, '')).trim().toUpperCase();
-    if (rawCode) {
-      const products = readJSON(PRODUCTS_FILE, []);
+    try {
+      const rawCode = decodeURIComponent(pathname.replace(/^\/api\/products?\//, '')).trim().toUpperCase();
       const stripped = rawCode.replace(/[^A-Z0-9]/gi, '');
-      const p = products.find(x => 
-        (x.code && x.code.toUpperCase() === rawCode) ||
-        (x.code && x.code.replace(/[^A-Z0-9]/gi, '').toUpperCase() === stripped)
+      const result = await pool.query(
+        `SELECT * FROM products WHERE active=TRUE AND
+         (UPPER(code)=$1 OR UPPER(regexp_replace(code, '[^A-Za-z0-9]', '', 'g'))=$2)
+         LIMIT 1`, [rawCode, stripped]
       );
-      if (p) {
-        return sendJSON(res, 200, p);
-      } else {
-        return sendJSON(res, 404, { error: 'Không tìm thấy sản phẩm với mã: ' + rawCode });
-      }
-    }
+      if (!result.rowCount) return sendJSON(res, 404, { error: 'Không tìm thấy sản phẩm với mã: ' + rawCode });
+      return sendJSON(res, 200, mapProduct(result.rows[0]));
+    } catch (err) { return databaseError(res, err); }
   }
 
-  // POST Add/Update Product
   if (pathname === '/api/products' && method === 'POST') {
     try {
       const payload = await parseRequestBody(req);
-      const products = readJSON(PRODUCTS_FILE, []);
-      const code = (payload.code || '').trim().toUpperCase();
-      if (!code) {
-        return sendJSON(res, 400, { error: 'Mã sản phẩm không được trống' });
-      }
-
-      const existingIdx = products.findIndex(p => p.code.toUpperCase() === code);
-      if (existingIdx >= 0) {
-        products[existingIdx] = {
-          ...products[existingIdx],
-          name: payload.name || products[existingIdx].name,
-          settingQty: Number(payload.settingQty) || products[existingIdx].settingQty,
-          notes: payload.notes || products[existingIdx].notes
-        };
-      } else {
-        products.push({
-          id: 'sp_' + Date.now(),
-          code: code,
-          name: payload.name || `Sản phẩm ${code}`,
-          settingQty: Number(payload.settingQty) || 10,
-          notes: payload.notes || ''
-        });
-      }
-      writeJSON(PRODUCTS_FILE, products);
-      return sendJSON(res, 200, { success: true, products });
-    } catch (err) {
-      return sendJSON(res, 400, { error: err.message });
-    }
+      const code = String(payload.code || '').trim().toUpperCase();
+      if (!code) return sendJSON(res, 400, { error: 'Mã sản phẩm không được trống' });
+      const id = String(payload.id || `sp_${Date.now()}`);
+      const result = await pool.query(
+        `INSERT INTO products (id,stt,code,factory,category,series,name,setting_qty,notes,active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE)
+         ON CONFLICT (code) DO UPDATE SET
+          factory=COALESCE(NULLIF(EXCLUDED.factory,''),products.factory),
+          category=COALESCE(NULLIF(EXCLUDED.category,''),products.category),
+          series=COALESCE(NULLIF(EXCLUDED.series,''),products.series),
+          name=COALESCE(NULLIF(EXCLUDED.name,''),products.name),
+          setting_qty=EXCLUDED.setting_qty, notes=EXCLUDED.notes,
+          active=TRUE, updated_at=NOW()
+         RETURNING *`,
+        [id, payload.stt || null, code, payload.factory || '', payload.category || '',
+         payload.series || '', payload.name || `Sản phẩm ${code}`,
+         Number(payload.settingQty) || 10, payload.notes || '']
+      );
+      return sendJSON(res, 200, { success: true, product: mapProduct(result.rows[0]) });
+    } catch (err) { return databaseError(res, err); }
   }
 
-  // GET Machines
   if (pathname === '/api/machines' && method === 'GET') {
-    const machines = readJSON(MACHINES_FILE, DEFAULT_MACHINES);
-    return sendJSON(res, 200, machines);
+    try {
+      const result = await pool.query('SELECT code FROM machines WHERE active=TRUE ORDER BY sort_order, code');
+      return sendJSON(res, 200, result.rows.map(row => row.code));
+    } catch (err) { return databaseError(res, err); }
   }
 
-  // POST Save Machines
   if (pathname === '/api/machines' && method === 'POST') {
+    let client;
     try {
       const payload = await parseRequestBody(req);
-      const list = Array.isArray(payload) ? payload : (payload.machines || []);
-      if (!Array.isArray(list) || list.length === 0) {
-        return sendJSON(res, 400, { error: 'Danh sách mã máy không hợp lệ' });
+      const list = (Array.isArray(payload) ? payload : payload.machines || [])
+        .map(value => String(value).trim()).filter(Boolean);
+      if (!list.length) return sendJSON(res, 400, { error: 'Danh sách mã máy không hợp lệ' });
+      client = await pool.connect();
+      await client.query('BEGIN');
+      await client.query('UPDATE machines SET active=FALSE, updated_at=NOW()');
+      for (let i = 0; i < list.length; i += 1) {
+        await client.query(
+          `INSERT INTO machines(code,sort_order,active) VALUES($1,$2,TRUE)
+           ON CONFLICT(code) DO UPDATE SET sort_order=$2,active=TRUE,updated_at=NOW()`,
+          [list[i], i + 1]
+        );
       }
-      writeJSON(MACHINES_FILE, list);
+      await client.query('COMMIT');
       return sendJSON(res, 200, { success: true, machines: list });
     } catch (err) {
-      return sendJSON(res, 400, { error: err.message });
-    }
+      if (client) { try { await client.query('ROLLBACK'); } catch (_) {} }
+      return databaseError(res, err);
+    } finally { if (client) client.release(); }
   }
 
-  // GET Workers
   if (pathname === '/api/workers' && method === 'GET') {
-    const workers = readJSON(WORKERS_FILE, DEFAULT_WORKERS);
-    return sendJSON(res, 200, workers);
+    try {
+      const result = await pool.query('SELECT * FROM workers WHERE active=TRUE ORDER BY employee_id');
+      return sendJSON(res, 200, result.rows.map(mapWorker));
+    } catch (err) { return databaseError(res, err); }
   }
 
-  // POST Add/Update Worker
   if (pathname === '/api/workers' && method === 'POST') {
     try {
       const payload = await parseRequestBody(req);
-      const workers = readJSON(WORKERS_FILE, DEFAULT_WORKERS);
-      const workerId = String(payload.id || '').trim();
-      if (!workerId) {
-        return sendJSON(res, 400, { error: 'Mã nhân viên (MSNV) không được để trống' });
-      }
-
-      const existingIdx = workers.findIndex(w => String(w.id).trim().toUpperCase() === workerId.toUpperCase());
-      const machinesArr = Array.isArray(payload.machines) 
-        ? payload.machines 
-        : (payload.machine ? String(payload.machine).split(/[,;]+/).map(s => s.trim()).filter(Boolean) : []);
-
-      const workerData = {
-        id: workerId,
-        name: payload.name || `Nhân viên ${workerId}`,
-        shift: Number(payload.shift) || 1,
-        machine: payload.machine || (machinesArr.length > 0 ? machinesArr.join(', ') : 'SA01_SB01'),
-        machines: machinesArr.length > 0 ? machinesArr : [payload.machine || 'SA01_SB01'],
-        role: payload.role || 'Công nhân vận hành'
-      };
-
-      if (existingIdx >= 0) {
-        workers[existingIdx] = { ...workers[existingIdx], ...workerData };
-      } else {
-        workers.push(workerData);
-      }
-      writeJSON(WORKERS_FILE, workers);
-      return sendJSON(res, 200, { success: true, workers, worker: workerData });
-    } catch (err) {
-      return sendJSON(res, 400, { error: err.message });
-    }
+      const employeeId = String(payload.id || payload.employeeId || '').trim();
+      if (!employeeId) return sendJSON(res, 400, { error: 'Mã nhân viên không được để trống' });
+      const machines = Array.isArray(payload.machines)
+        ? payload.machines.map(String)
+        : String(payload.machine || '').split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+      const result = await pool.query(
+        `INSERT INTO workers(employee_id,name,shift,machines,role,active)
+         VALUES($1,$2,$3,$4::jsonb,$5,TRUE)
+         ON CONFLICT(employee_id) DO UPDATE SET
+          name=EXCLUDED.name,shift=EXCLUDED.shift,machines=EXCLUDED.machines,
+          role=EXCLUDED.role,active=TRUE,updated_at=NOW()
+         RETURNING *`,
+        [employeeId, payload.name || `Nhân viên ${employeeId}`,
+         Number(payload.shift) || 1, JSON.stringify(machines),
+         payload.role || 'Công nhân vận hành']
+      );
+      return sendJSON(res, 200, { success: true, worker: mapWorker(result.rows[0]) });
+    } catch (err) { return databaseError(res, err); }
   }
 
-  // DELETE Worker
   if (pathname.startsWith('/api/workers/') && method === 'DELETE') {
-    const workerId = decodeURIComponent(pathname.replace('/api/workers/', '')).trim();
-    const workers = readJSON(WORKERS_FILE, DEFAULT_WORKERS);
-    const filtered = workers.filter(w => String(w.id).trim().toUpperCase() !== workerId.toUpperCase());
-    writeJSON(WORKERS_FILE, filtered);
-    return sendJSON(res, 200, { success: true, workers: filtered });
+    try {
+      const employeeId = decodeURIComponent(pathname.slice('/api/workers/'.length)).trim();
+      await pool.query('UPDATE workers SET active=FALSE,updated_at=NOW() WHERE employee_id=$1', [employeeId]);
+      const result = await pool.query('SELECT * FROM workers WHERE active=TRUE ORDER BY employee_id');
+      return sendJSON(res, 200, { success: true, workers: result.rows.map(mapWorker) });
+    } catch (err) { return databaseError(res, err); }
   }
 
-  // Reset to default sample data
   if (pathname === '/api/reset-sample' && method === 'POST') {
-    if (fs.existsSync(SAMPLE_BATCHES_FILE)) {
-      fs.copyFileSync(SAMPLE_BATCHES_FILE, BATCHES_FILE);
-    }
-    if (fs.existsSync(DEFAULT_PRODUCTS_FILE)) {
-      fs.copyFileSync(DEFAULT_PRODUCTS_FILE, PRODUCTS_FILE);
-    }
-    return sendJSON(res, 200, { success: true, message: 'Đã khôi phục dữ liệu mẫu' });
+    return sendJSON(res, 409, {
+      success: false,
+      error: 'Chức năng khôi phục dữ liệu mẫu đã tắt để bảo vệ dữ liệu PostgreSQL.'
+    });
   }
 
   // --- STATIC FILE SERVING ---

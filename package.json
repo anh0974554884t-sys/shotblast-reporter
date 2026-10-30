@@ -6,7 +6,16 @@
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": ["shotblast", "mes", "production-report", "tablet", "shopfloor"],
+  "keywords": [
+    "shotblast",
+    "mes",
+    "production-report",
+    "tablet",
+    "shopfloor"
+  ],
   "author": "Production Dept",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "pg": "^8.23.1"
+  }
 }
