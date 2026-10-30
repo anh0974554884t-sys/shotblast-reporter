@@ -1,3 +1,4 @@
+console.info('SHOTBLAST_APP_VERSION: 2026-10-30-time-v5');
 // ==========================================================================
 // MAIN SHOPFLOOR APPLICATION LOGIC - SHOTBLAST MES (SMC3)
 // 5-Step Ergonomic Workflow:
@@ -975,7 +976,9 @@ class ShotblastApp {
 
   handleNumpad(val) {
     if (window.soundManager) window.soundManager.playClick();
-    const targetInput = this.focusedInput || this.elements.inputQuantity;
+    // Ban phim so tren man hinh chi danh cho So luong xu ly.
+    const targetInput = this.elements.inputQuantity;
+    this.focusedInput = targetInput;
     let currentVal = targetInput.value || '';
 
     if (val === 'clear') {
@@ -2009,15 +2012,30 @@ class ShotblastApp {
       this.setTimeNow('end');
     });
 
-    this.elements.inputStartTime.addEventListener('input', () => {
+    const formatTimeText = (input) => {
+      const caretAtEnd = input.selectionStart === input.value.length;
+      let digits = input.value.replace(/\D/g, '').slice(0, 4);
+      if (digits.length >= 3) digits = digits.slice(0, 2) + ':' + digits.slice(2);
+      input.value = digits;
+      if (caretAtEnd) input.setSelectionRange(input.value.length, input.value.length);
       this.validateShotTimes();
       this.validateForm();
-    });
+    };
 
-    this.elements.inputEndTime.addEventListener('input', () => {
+    const normalizeTimeText = (input) => {
+      const m = input.value.match(/^(\d{1,2}):(\d{1,2})$/);
+      if (!m) return;
+      const h = Math.min(23, Number(m[1]));
+      const min = Math.min(59, Number(m[2]));
+      input.value = String(h).padStart(2, '0') + ':' + String(min).padStart(2, '0');
       this.validateShotTimes();
       this.validateForm();
-    });
+    };
+
+    this.elements.inputStartTime.addEventListener('input', () => formatTimeText(this.elements.inputStartTime));
+    this.elements.inputEndTime.addEventListener('input', () => formatTimeText(this.elements.inputEndTime));
+    this.elements.inputStartTime.addEventListener('blur', () => normalizeTimeText(this.elements.inputStartTime));
+    this.elements.inputEndTime.addEventListener('blur', () => normalizeTimeText(this.elements.inputEndTime));
 
     this.elements.inputStartTime.addEventListener('focus', () => {
       this.focusedInput = this.elements.inputStartTime;
@@ -2091,6 +2109,7 @@ class ShotblastApp {
     const padBtns = this.elements.touchNumpad.querySelectorAll('.btn-pad');
     padBtns.forEach(btn => {
       btn.addEventListener('click', () => {
+        this.focusedInput = this.elements.inputQuantity;
         const val = btn.getAttribute('data-val');
         if (val) this.handleNumpad(val);
       });
