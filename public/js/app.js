@@ -1,4 +1,4 @@
-console.info('SHOTBLAST_APP_VERSION: 2026-10-30-time-v5');
+console.info('SHOTBLAST_APP_VERSION: 2026-10-30-shift-time-v6');
 // ==========================================================================
 // MAIN SHOPFLOOR APPLICATION LOGIC - SHOTBLAST MES (SMC3)
 // 5-Step Ergonomic Workflow:
@@ -709,6 +709,8 @@ class ShotblastApp {
     }
 
     if (window.soundManager) window.soundManager.playClick();
+    if (this.elements.inputStartTime.value) this.normalizeShiftTimeInput(this.elements.inputStartTime, false);
+    if (this.elements.inputEndTime.value) this.normalizeShiftTimeInput(this.elements.inputEndTime, false);
     this.validateShotTimes();
     this.validateForm();
   }
@@ -722,6 +724,80 @@ class ShotblastApp {
   // ==========================================
   // STEP 4: SHOT TIMES (START & END) & VALIDATION
   // ==========================================
+  getShiftWindow() {
+    if (this.currentShift === 1) return { start: 360, end: 840, label: 'Ca 1 (06:00–14:00)' };
+    if (this.currentShift === 2) return { start: 840, end: 1320, label: 'Ca 2 (14:00–22:00)' };
+    return { start: 1320, end: 1800, label: 'Ca 3 (22:00–06:00)' };
+  }
+
+  parseShiftTime(rawValue) {
+    const raw = String(rawValue || '').trim();
+    if (!raw) return { valid: false, empty: true };
+
+    let hour;
+    let minute;
+    if (raw.includes(':')) {
+      const parts = raw.split(':');
+      if (parts.length !== 2 || !/^\d{1,2}$/.test(parts[0]) || !/^\d{1,2}$/.test(parts[1])) {
+        return { valid: false, message: 'Giờ không đúng định dạng' };
+      }
+      hour = Number(parts[0]);
+      minute = Number(parts[1]);
+    } else {
+      const digits = raw.replace(/\D/g, '');
+      if (digits.length < 3 || digits.length > 4) {
+        return { valid: false, message: 'Nhập 3–4 số, ví dụ 245 hoặc 1445' };
+      }
+      hour = Number(digits.slice(0, -2));
+      minute = Number(digits.slice(-2));
+    }
+
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour > 23 || minute > 59) {
+      return { valid: false, message: 'Giờ hoặc phút không hợp lệ' };
+    }
+
+    const windowInfo = this.getShiftWindow();
+    const base = hour * 60 + minute;
+    const candidates = [];
+    const add = value => { if (!candidates.includes(value)) candidates.push(value); };
+
+    add(base);
+    // Giờ 1–11 được hiểu theo ca. Ví dụ Ca 2: 2:45 → 14:45.
+    if (hour >= 1 && hour <= 11) add(base + 720);
+    // Ca 3: giờ sau nửa đêm thuộc ngày kế tiếp.
+    if (base < 360) add(base + 1440);
+    if (hour >= 10 && hour <= 11) add(base + 720);
+
+    const absoluteMinutes = candidates.find(value =>
+      value >= windowInfo.start && value < windowInfo.end
+    );
+
+    if (absoluteMinutes === undefined) {
+      return { valid: false, message: `${raw} không thuộc ${windowInfo.label}` };
+    }
+
+    const displayMinutes = absoluteMinutes % 1440;
+    const hh = String(Math.floor(displayMinutes / 60)).padStart(2, '0');
+    const mm = String(displayMinutes % 60).padStart(2, '0');
+    return { valid: true, value: `${hh}:${mm}`, absoluteMinutes };
+  }
+
+  normalizeShiftTimeInput(input, showMessage = true) {
+    const parsed = this.parseShiftTime(input.value);
+    if (parsed.valid) {
+      input.value = parsed.value;
+      input.dataset.absoluteMinutes = String(parsed.absoluteMinutes);
+      input.classList.remove('input-error');
+      return parsed;
+    }
+    delete input.dataset.absoluteMinutes;
+    if (!parsed.empty) {
+      input.classList.add('input-error');
+      if (showMessage) this.showToast(`⚠️ ${parsed.message}`, 'warn');
+    }
+    return parsed;
+  }
+
   setTimeNow(field) {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
@@ -740,48 +816,47 @@ class ShotblastApp {
   }
 
   validateShotTimes() {
-    const start = this.elements.inputStartTime.value;
-    const end = this.elements.inputEndTime.value;
-
+    const startInput = this.elements.inputStartTime;
+    const endInput = this.elements.inputEndTime;
     const alertEl = this.elements.timeValidationAlert;
     const badgeEl = this.elements.shotDurationBadge;
 
-    if (!start || !end) {
+    const startParsed = this.parseShiftTime(startInput.value);
+    const endParsed = this.parseShiftTime(endInput.value);
+
+    if (!startInput.value || !endInput.value) {
       if (alertEl) alertEl.classList.add('hidden');
       if (badgeEl) badgeEl.classList.add('hidden');
       return { valid: false, message: 'Vui lòng nhập cả giờ Bắt đầu và Dừng' };
     }
 
-    const [sh, sm] = start.split(':').map(Number);
-    const [eh, em] = end.split(':').map(Number);
-    let startMins = sh * 60 + sm;
-    let endMins = eh * 60 + em;
-
-    // Ca 3 allows crossing midnight (e.g. 23:30 to 00:15)
-    if (this.currentShift === 3) {
-      // If start is in the evening (>= 20:00) and end is in the early morning (<= 12:00)
-      if (startMins >= 1200 && endMins < 720) {
-        endMins += 1440; // add 24 hours
-      }
-    }
-
-    if (endMins <= startMins) {
+    if (!startParsed.valid || !endParsed.valid) {
+      const message = !startParsed.valid ? startParsed.message : endParsed.message;
       if (alertEl) {
-        alertEl.textContent = '⚠️ Giờ Dừng phải lớn hơn giờ Bắt đầu!';
+        alertEl.textContent = `⚠️ ${message}`;
         alertEl.classList.remove('hidden');
       }
       if (badgeEl) badgeEl.classList.add('hidden');
-      return { valid: false, message: 'Giờ Dừng phải lớn hơn giờ Bắt đầu!' };
+      return { valid: false, message };
     }
 
-    const duration = endMins - startMins;
+    if (endParsed.absoluteMinutes <= startParsed.absoluteMinutes) {
+      const message = 'Giờ Dừng phải lớn hơn giờ Bắt đầu trong cùng ca';
+      if (alertEl) {
+        alertEl.textContent = `⚠️ ${message}`;
+        alertEl.classList.remove('hidden');
+      }
+      if (badgeEl) badgeEl.classList.add('hidden');
+      return { valid: false, message };
+    }
+
+    const duration = endParsed.absoluteMinutes - startParsed.absoluteMinutes;
     if (alertEl) alertEl.classList.add('hidden');
     if (badgeEl) {
       badgeEl.textContent = `Thời lượng: ${duration} phút`;
       badgeEl.classList.remove('hidden');
     }
-
-    return { valid: true, duration: duration };
+    return { valid: true, duration };
   }
 
   // ==========================================
@@ -976,7 +1051,6 @@ class ShotblastApp {
 
   handleNumpad(val) {
     if (window.soundManager) window.soundManager.playClick();
-    // Ban phim so tren man hinh chi danh cho So luong xu ly.
     const targetInput = this.elements.inputQuantity;
     this.focusedInput = targetInput;
     let currentVal = targetInput.value || '';
@@ -2012,30 +2086,25 @@ class ShotblastApp {
       this.setTimeNow('end');
     });
 
-    const formatTimeText = (input) => {
-      const caretAtEnd = input.selectionStart === input.value.length;
-      let digits = input.value.replace(/\D/g, '').slice(0, 4);
-      if (digits.length >= 3) digits = digits.slice(0, 2) + ':' + digits.slice(2);
-      input.value = digits;
-      if (caretAtEnd) input.setSelectionRange(input.value.length, input.value.length);
-      this.validateShotTimes();
+    const keepTimeDigits = (input) => {
+      let cleaned = input.value.replace(/[^0-9:]/g, '');
+      if (!cleaned.includes(':')) cleaned = cleaned.slice(0, 4);
+      input.value = cleaned;
+      delete input.dataset.absoluteMinutes;
       this.validateForm();
     };
-
-    const normalizeTimeText = (input) => {
-      const m = input.value.match(/^(\d{1,2}):(\d{1,2})$/);
-      if (!m) return;
-      const h = Math.min(23, Number(m[1]));
-      const min = Math.min(59, Number(m[2]));
-      input.value = String(h).padStart(2, '0') + ':' + String(min).padStart(2, '0');
+    this.elements.inputStartTime.addEventListener('input', () => keepTimeDigits(this.elements.inputStartTime));
+    this.elements.inputEndTime.addEventListener('input', () => keepTimeDigits(this.elements.inputEndTime));
+    this.elements.inputStartTime.addEventListener('blur', () => {
+      this.normalizeShiftTimeInput(this.elements.inputStartTime);
       this.validateShotTimes();
       this.validateForm();
-    };
-
-    this.elements.inputStartTime.addEventListener('input', () => formatTimeText(this.elements.inputStartTime));
-    this.elements.inputEndTime.addEventListener('input', () => formatTimeText(this.elements.inputEndTime));
-    this.elements.inputStartTime.addEventListener('blur', () => normalizeTimeText(this.elements.inputStartTime));
-    this.elements.inputEndTime.addEventListener('blur', () => normalizeTimeText(this.elements.inputEndTime));
+    });
+    this.elements.inputEndTime.addEventListener('blur', () => {
+      this.normalizeShiftTimeInput(this.elements.inputEndTime);
+      this.validateShotTimes();
+      this.validateForm();
+    });
 
     this.elements.inputStartTime.addEventListener('focus', () => {
       this.focusedInput = this.elements.inputStartTime;
@@ -2109,6 +2178,8 @@ class ShotblastApp {
     const padBtns = this.elements.touchNumpad.querySelectorAll('.btn-pad');
     padBtns.forEach(btn => {
       btn.addEventListener('click', () => {
+        if (this.elements.inputStartTime.value) this.normalizeShiftTimeInput(this.elements.inputStartTime, false);
+        if (this.elements.inputEndTime.value) this.normalizeShiftTimeInput(this.elements.inputEndTime, false);
         this.focusedInput = this.elements.inputQuantity;
         const val = btn.getAttribute('data-val');
         if (val) this.handleNumpad(val);
