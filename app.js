@@ -1,4 +1,4 @@
-console.info('SHOTBLAST_APP_VERSION: 2026-10-30-mobile-time-fix-v3');
+console.info('SHOTBLAST_APP_VERSION: 2026-10-30-stable-text-time-v4');
 // ==========================================================================
 // MAIN SHOPFLOOR APPLICATION LOGIC - SHOTBLAST MES (SMC3)
 // 5-Step Ergonomic Workflow:
@@ -28,7 +28,6 @@ class ShotblastApp {
     this.isOnline = false;
     this.activePin = '';
     this.focusedInput = null;
-    this.savedShotTimes = { start: '', end: '' };
     this.successCountdownTimer = null;
     this.editingWorkerId = null;
 
@@ -216,6 +215,7 @@ class ShotblastApp {
 
   async init() {
     this.startClock();
+    this.setupStableTimeInputs();
     this.bindEvents();
     this.initThemeAndSound();
 
@@ -723,6 +723,38 @@ class ShotblastApp {
   // ==========================================
   // STEP 4: SHOT TIMES (START & END) & VALIDATION
   // ==========================================
+  setupStableTimeInputs() {
+    const setup = (input) => {
+      if (!input) return;
+      // Khong dung input type=time: mot so browser xoa gia tri khi chuyen focus.
+      input.type = 'text';
+      input.inputMode = 'numeric';
+      input.maxLength = 5;
+      input.placeholder = 'HH:MM';
+      input.autocomplete = 'off';
+
+      const format = () => {
+        let digits = input.value.replace(/\D/g, '').slice(0, 4);
+        if (digits.length >= 3) digits = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+        input.value = digits;
+      };
+
+      input.addEventListener('input', format);
+      input.addEventListener('blur', () => {
+        const match = input.value.match(/^(\d{1,2}):(\d{1,2})$/);
+        if (!match) return;
+        const hour = Math.min(23, Number(match[1]));
+        const minute = Math.min(59, Number(match[2]));
+        input.value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        this.validateShotTimes();
+        this.validateForm();
+      });
+    };
+
+    setup(this.elements.inputStartTime);
+    setup(this.elements.inputEndTime);
+  }
+
   setTimeNow(field) {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
@@ -977,7 +1009,6 @@ class ShotblastApp {
 
   handleNumpad(val) {
     if (window.soundManager) window.soundManager.playClick();
-    // Ban phim so chi dieu khien So luong xu ly.
     const targetInput = this.elements.inputQuantity;
     this.focusedInput = targetInput;
     let currentVal = targetInput.value || '';
@@ -2013,24 +2044,15 @@ class ShotblastApp {
       this.setTimeNow('end');
     });
 
-    const rememberShotTime = (kind, input) => {
-      const value = input.value;
-      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) {
-        this.savedShotTimes[kind] = value;
-      }
+    this.elements.inputStartTime.addEventListener('input', () => {
       this.validateShotTimes();
       this.validateForm();
-    };
+    });
 
-    this.elements.inputStartTime.addEventListener('input', () =>
-      rememberShotTime('start', this.elements.inputStartTime));
-    this.elements.inputStartTime.addEventListener('change', () =>
-      rememberShotTime('start', this.elements.inputStartTime));
-
-    this.elements.inputEndTime.addEventListener('input', () =>
-      rememberShotTime('end', this.elements.inputEndTime));
-    this.elements.inputEndTime.addEventListener('change', () =>
-      rememberShotTime('end', this.elements.inputEndTime));
+    this.elements.inputEndTime.addEventListener('input', () => {
+      this.validateShotTimes();
+      this.validateForm();
+    });
 
     this.elements.inputStartTime.addEventListener('focus', () => {
       this.focusedInput = this.elements.inputStartTime;
@@ -2103,25 +2125,10 @@ class ShotblastApp {
     // Balanced Touch Numpad
     const padBtns = this.elements.touchNumpad.querySelectorAll('.btn-pad');
     padBtns.forEach(btn => {
-      const preserveTimes = () => {
-        const start = this.elements.inputStartTime.value;
-        const end = this.elements.inputEndTime.value;
-        if (/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) this.savedShotTimes.start = start;
-        if (/^([01]\d|2[0-3]):[0-5]\d$/.test(end)) this.savedShotTimes.end = end;
-      };
-      btn.addEventListener('touchstart', preserveTimes, { passive: true });
-      btn.addEventListener('pointerdown', preserveTimes);
       btn.addEventListener('click', () => {
-        const startBefore = this.savedShotTimes.start;
-        const endBefore = this.savedShotTimes.end;
         this.focusedInput = this.elements.inputQuantity;
         const val = btn.getAttribute('data-val');
         if (val) this.handleNumpad(val);
-        // Mot so browser mobile xoa input type=time khi mat focus; khoi phuc ngay.
-        if (!this.elements.inputStartTime.value && startBefore) this.elements.inputStartTime.value = startBefore;
-        if (!this.elements.inputEndTime.value && endBefore) this.elements.inputEndTime.value = endBefore;
-        this.validateShotTimes();
-        this.validateForm();
       });
     });
 
