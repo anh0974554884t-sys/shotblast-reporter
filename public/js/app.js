@@ -445,10 +445,12 @@ class ShotblastApp {
   }
 
   filterMachinesByFactory() {
+    // SMC3 machines: SA01_* + LA02_SB01; SMC2 machines: SA02_* only
+    const smc3Extra = ['LA02_SB01'];
     if (this.currentFactory === 'SMC2') {
-      this.machines = this.allMachines.filter(m => m.startsWith('SA02') || m.startsWith('LA02') || m.includes('SMC2'));
+      this.machines = this.allMachines.filter(m => m.startsWith('SA02') || m.includes('SMC2'));
     } else {
-      this.machines = this.allMachines.filter(m => m.startsWith('SA01') || m.includes('SMC3') || (!m.startsWith('SA02') && !m.startsWith('LA02')));
+      this.machines = this.allMachines.filter(m => m.startsWith('SA01') || smc3Extra.includes(m) || m.includes('SMC3'));
     }
     if (this.machines.length === 0) {
       this.machines = [...this.allMachines];
