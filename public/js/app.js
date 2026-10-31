@@ -839,16 +839,12 @@ class ShotblastApp {
       this.elements.shiftAutoBadge.style.color = isManual ? '#3730A3' : '#166534';
     }
 
-    // Update time input placeholders based on shift
-    if (this.currentShift === 1) {
-      this.elements.inputStartTime.placeholder = 'Nhập 830 → 08:30';
-      this.elements.inputEndTime.placeholder = 'Nhập 915 → 09:15';
-    } else if (this.currentShift === 2) {
-      this.elements.inputStartTime.placeholder = 'Nhập 245 → 14:45';
-      this.elements.inputEndTime.placeholder = 'Nhập 320 → 15:20';
-    } else {
-      this.elements.inputStartTime.placeholder = 'Nhập 1130 → 23:30';
-      this.elements.inputEndTime.placeholder = 'Nhập 245 → 02:45';
+    // Update shift window label chip (placeholders stay as HH:MM)
+    const shiftWindowLabel = document.getElementById('shiftWindowLabel');
+    if (shiftWindowLabel) {
+      if (this.currentShift === 1) shiftWindowLabel.textContent = 'Ca 1: 06:00 – 14:00';
+      else if (this.currentShift === 2) shiftWindowLabel.textContent = 'Ca 2: 14:00 – 22:00';
+      else shiftWindowLabel.textContent = 'Ca 3: 22:00 – 06:00 (hôm sau)';
     }
 
     // Update hint at Step 3
