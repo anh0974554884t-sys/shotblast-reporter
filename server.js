@@ -45,6 +45,11 @@ const DEFAULT_MACHINES = [
   "SA01_SB03",
   "SA01_SB04",
   "SA01_SB05",
+  "SA02_SB01",
+  "SA02_SB02",
+  "SA02_SB03",
+  "SA02_SB04",
+  "SA02_SB05",
   "LA02_SB01"
 ];
 

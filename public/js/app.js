@@ -13,15 +13,22 @@ class ShotblastApp {
   constructor() {
     this.batches = [];
     this.workers = [];
-    this.machines = [
+    this.allMachines = [
       'SA01_SB01',
       'SA01_SB02',
       'SA01_SB03',
       'SA01_SB04',
       'SA01_SB05',
+      'SA02_SB01',
+      'SA02_SB02',
+      'SA02_SB03',
+      'SA02_SB04',
+      'SA02_SB05',
       'LA02_SB01'
     ];
-    this.currentMachine = 'SA01_SB01';
+    this.machines = [...this.allMachines];
+    this.currentFactory = localStorage.getItem('shotblast_factory') || 'SMC3';
+    this.currentMachine = this.currentFactory === 'SMC2' ? 'SA02_SB01' : 'SA01_SB01';
     this.currentWorker = null;
     this.currentShift = 1;
     this.currentChamber = '';
@@ -63,7 +70,10 @@ class ShotblastApp {
       btnToggleTheme: document.getElementById('btnToggleTheme'),
       btnFullscreen: document.getElementById('btnFullscreen'),
 
-      // Step 1: Chọn máy
+      // Step 1: Chọn máy & Nhà máy
+      btnFactorySMC3: document.getElementById('btnFactorySMC3'),
+      btnFactorySMC2: document.getElementById('btnFactorySMC2'),
+      inputFactory: document.getElementById('inputFactory'),
       machineSelector: document.getElementById('machineSelector'),
       inputMachine: document.getElementById('inputMachine'),
       btnOpenMachineSettings: document.getElementById('btnOpenMachineSettings'),
@@ -322,28 +332,78 @@ class ShotblastApp {
   }
 
   // ==========================================
-  // STEP 1: MACHINES MANAGEMENT
+  // STEP 1: MACHINES & FACTORY MANAGEMENT
   // ==========================================
   async loadMachines() {
     try {
       const res = await fetch('/api/machines');
       if (res.ok) {
-        this.machines = await res.json();
+        this.allMachines = await res.json();
       } else {
         throw new Error('Offline');
       }
     } catch (e) {
       const cached = localStorage.getItem('shotblast_machines');
       if (cached) {
-        try { this.machines = JSON.parse(cached); } catch (ex) {}
+        try { this.allMachines = JSON.parse(cached); } catch (ex) {}
       }
-      if (!this.machines || this.machines.length === 0) {
-        this.machines = ['SA01_SB01', 'SA01_SB02', 'SA01_SB03', 'SA01_SB04', 'SA01_SB05', 'LA02_SB01'];
+      if (!this.allMachines || this.allMachines.length === 0) {
+        this.allMachines = [
+          'SA01_SB01', 'SA01_SB02', 'SA01_SB03', 'SA01_SB04', 'SA01_SB05',
+          'SA02_SB01', 'SA02_SB02', 'SA02_SB03', 'SA02_SB04', 'SA02_SB05',
+          'LA02_SB01'
+        ];
       }
     }
-    localStorage.setItem('shotblast_machines', JSON.stringify(this.machines));
+    localStorage.setItem('shotblast_machines', JSON.stringify(this.allMachines));
+    this.selectFactory(this.currentFactory, false);
     this.renderMachineButtons();
     this.updateMachineFilters();
+  }
+
+  selectFactory(factory, shouldRender = true) {
+    this.currentFactory = factory || 'SMC3';
+    localStorage.setItem('shotblast_factory', this.currentFactory);
+    if (this.elements.inputFactory) this.elements.inputFactory.value = this.currentFactory;
+
+    if (this.elements.btnFactorySMC3 && this.elements.btnFactorySMC2) {
+      if (this.currentFactory === 'SMC2') {
+        this.elements.btnFactorySMC2.classList.add('active');
+        this.elements.btnFactorySMC3.classList.remove('active');
+      } else {
+        this.elements.btnFactorySMC3.classList.add('active');
+        this.elements.btnFactorySMC2.classList.remove('active');
+      }
+    }
+
+    this.filterMachinesByFactory();
+
+    if (window.productManager) {
+      window.productManager.setFactory(this.currentFactory);
+      this.renderQuickProductChips();
+      this.renderDsspTable();
+    }
+
+    if (shouldRender) {
+      this.renderMachineButtons();
+      if (this.machines.length > 0) {
+        if (!this.machines.includes(this.currentMachine)) {
+          this.selectMachine(this.machines[0], false);
+        }
+      }
+    }
+    this.validateForm();
+  }
+
+  filterMachinesByFactory() {
+    if (this.currentFactory === 'SMC2') {
+      this.machines = this.allMachines.filter(m => m.startsWith('SA02') || m.startsWith('LA02') || m.includes('SMC2'));
+    } else {
+      this.machines = this.allMachines.filter(m => m.startsWith('SA01') || m.includes('SMC3') || (!m.startsWith('SA02') && !m.startsWith('LA02')));
+    }
+    if (this.machines.length === 0) {
+      this.machines = [...this.allMachines];
+    }
   }
 
   renderMachineButtons() {
@@ -1113,19 +1173,19 @@ class ShotblastApp {
       } else {
         this.elements.submitValidationHint.classList.remove('hidden');
         if (!hasMachine) {
-          this.elements.submitValidationHint.textContent = 'Bước 1: Vui lòng chọn Máy bắn bi';
+          this.elements.submitValidationHint.textContent = 'Bước 1: Vui lòng chọn Máy Shotblast';
         } else if (!hasWorker) {
           this.elements.submitValidationHint.textContent = 'Bước 2: Vui lòng chọn Người thao tác';
         } else if (!hasShift) {
           this.elements.submitValidationHint.textContent = 'Bước 3: Vui lòng chọn Ca làm việc';
-        } else if (!this.elements.inputStartTime.value || !this.elements.inputEndTime.value) {
-          this.elements.submitValidationHint.textContent = 'Bước 4: Vui lòng nhập giờ Bắt đầu và Dừng';
-        } else if (!timeStatus.valid) {
-          this.elements.submitValidationHint.textContent = 'Bước 4: Giờ Dừng phải lớn hơn giờ Bắt đầu!';
         } else if (!hasProduct) {
-          this.elements.submitValidationHint.textContent = 'Bước 5: Vui lòng quét hoặc nhập Mã sản phẩm';
+          this.elements.submitValidationHint.textContent = 'Bước 4: Vui lòng quét hoặc nhập Mã sản phẩm';
         } else if (!hasChamber) {
-          this.elements.submitValidationHint.textContent = 'Bước 5: Vui lòng chọn Số buồng máy (1 – 6 buồng)';
+          this.elements.submitValidationHint.textContent = 'Bước 4: Vui lòng chọn Số buồng máy (1 – 6 buồng)';
+        } else if (!this.elements.inputStartTime.value || !this.elements.inputEndTime.value) {
+          this.elements.submitValidationHint.textContent = 'Bước 5: Vui lòng nhập giờ Bắt đầu và Dừng Shotblast';
+        } else if (!timeStatus.valid) {
+          this.elements.submitValidationHint.textContent = 'Bước 5: Giờ Dừng phải lớn hơn giờ Bắt đầu!';
         } else if (qty <= 0) {
           this.elements.submitValidationHint.textContent = 'Bước 5: Vui lòng nhập Số lượng xử lý (> 0 PCS)';
         }
@@ -1147,7 +1207,7 @@ class ShotblastApp {
 
   async submitBatch() {
     if (!this.currentMachine) {
-      this.showToast('⚠️ Bước 1: Vui lòng chọn Máy bắn bi!', 'warn');
+      this.showToast('⚠️ Bước 1: Vui lòng chọn Máy Shotblast!', 'warn');
       if (window.soundManager) window.soundManager.playError();
       this.highlightField(this.elements.machineSelector);
       return;
@@ -1164,9 +1224,26 @@ class ShotblastApp {
       return;
     }
 
+    const productCode = this.elements.inputProductCode.value.trim().toUpperCase();
+    if (!productCode) {
+      this.showToast('⚠️ Bước 4: Vui lòng quét hoặc nhập Mã sản phẩm!', 'warn');
+      if (window.soundManager) window.soundManager.playError();
+      this.elements.inputProductCode.focus();
+      this.focusedInput = this.elements.inputProductCode;
+      this.highlightField(this.elements.inputProductCode);
+      return;
+    }
+
+    if (!this.currentChamber) {
+      this.showToast('⚠️ Bước 4: Vui lòng chọn Số buồng máy (1 – 6 buồng)!', 'warn');
+      if (window.soundManager) window.soundManager.playError();
+      this.highlightField(this.elements.chamberSelector);
+      return;
+    }
+
     const timeStatus = this.validateShotTimes();
     if (!this.elements.inputStartTime.value || !this.elements.inputEndTime.value) {
-      this.showToast('⚠️ Bước 4: Vui lòng nhập giờ Bắt đầu và Dừng!', 'warn');
+      this.showToast('⚠️ Bước 5: Vui lòng nhập giờ Bắt đầu và Dừng Shotblast!', 'warn');
       if (window.soundManager) window.soundManager.playError();
       if (!this.elements.inputStartTime.value) {
         this.elements.inputStartTime.focus();
@@ -1179,26 +1256,9 @@ class ShotblastApp {
     }
 
     if (!timeStatus.valid) {
-      this.showToast('⚠️ Bước 4: Giờ Dừng phải lớn hơn giờ Bắt đầu!', 'warn');
+      this.showToast('⚠️ Bước 5: Giờ Dừng phải lớn hơn giờ Bắt đầu!', 'warn');
       if (window.soundManager) window.soundManager.playError();
       this.highlightField(this.elements.inputEndTime);
-      return;
-    }
-
-    const productCode = this.elements.inputProductCode.value.trim().toUpperCase();
-    if (!productCode) {
-      this.showToast('⚠️ Bước 5: Vui lòng quét hoặc nhập Mã sản phẩm!', 'warn');
-      if (window.soundManager) window.soundManager.playError();
-      this.elements.inputProductCode.focus();
-      this.focusedInput = this.elements.inputProductCode;
-      this.highlightField(this.elements.inputProductCode);
-      return;
-    }
-
-    if (!this.currentChamber) {
-      this.showToast('⚠️ Bước 5: Vui lòng chọn Số buồng máy (1 – 6 buồng)!', 'warn');
-      if (window.soundManager) window.soundManager.playError();
-      this.highlightField(this.elements.chamberSelector);
       return;
     }
 
@@ -1228,13 +1288,15 @@ class ShotblastApp {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     const monthStr = todayStr.substring(0, 7);
+    const factoryLine = this.currentFactory || (machine.startsWith('SA02') || machine.startsWith('LA02') ? 'SMC2' : 'SMC3');
 
     const newBatch = {
       date: todayStr,
       month: monthStr,
       shift: shift,
       machine: machine,
-      line: 'SMC3',
+      line: factoryLine,
+      factory: factoryLine,
       stage: 'Shotblast',
       turn: nextTurn,
       startTime: startTime,
@@ -2047,6 +2109,20 @@ class ShotblastApp {
     this.elements.btnToggleSound.addEventListener('click', () => this.toggleSound());
     this.elements.btnToggleTheme.addEventListener('click', () => this.toggleTheme());
     this.elements.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
+
+    // Step 1: Factory Selector
+    if (this.elements.btnFactorySMC3) {
+      this.elements.btnFactorySMC3.addEventListener('click', () => {
+        if (window.soundManager) window.soundManager.playClick();
+        this.selectFactory('SMC3', true);
+      });
+    }
+    if (this.elements.btnFactorySMC2) {
+      this.elements.btnFactorySMC2.addEventListener('click', () => {
+        if (window.soundManager) window.soundManager.playClick();
+        this.selectFactory('SMC2', true);
+      });
+    }
 
     // Step 2: Operator Search Events
     this.elements.inputOperatorSearch.addEventListener('focus', () => {

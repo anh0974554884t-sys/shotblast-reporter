@@ -6,6 +6,11 @@ class ProductManager {
   constructor() {
     this.products = [];
     this.currentCategory = '';
+    this.currentFactory = localStorage.getItem('shotblast_factory') || 'SMC3';
+  }
+
+  setFactory(factory) {
+    this.currentFactory = factory || 'SMC3';
   }
 
   async init() {
@@ -17,9 +22,9 @@ class ProductManager {
         throw new Error('API offline');
       }
     } catch (e) {
-      // Fallback: try loading default_products.json
+      // Fallback: try loading default_products.json or products.json
       try {
-        const localRes = await fetch('/data/default_products.json');
+        const localRes = await fetch('/data/products.json');
         if (localRes.ok) {
           this.products = await localRes.json();
         }
@@ -48,7 +53,10 @@ class ProductManager {
   findByCode(code) {
     if (!code) return null;
     const clean = code.trim().toUpperCase();
-    return this.products.find(p => p.code.toUpperCase() === clean) || null;
+    const matches = this.products.filter(p => p.code.toUpperCase() === clean);
+    if (matches.length === 0) return null;
+    if (matches.length === 1) return matches[0];
+    return matches.find(p => p.factory === this.currentFactory) || matches[0];
   }
 
   setCategoryFilter(category) {
@@ -57,6 +65,9 @@ class ProductManager {
 
   search(query, limit = 12) {
     let list = this.products;
+    if (this.currentFactory) {
+      list = list.filter(p => !p.factory || p.factory === this.currentFactory);
+    }
     if (this.currentCategory) {
       list = list.filter(p => 
         (p.category && p.category.toUpperCase().includes(this.currentCategory)) ||
@@ -121,34 +132,51 @@ class ProductManager {
     if (!containerEl) return;
     containerEl.innerHTML = '';
 
-    // Prominent SMC parts often processed in Shotblast
-    const featuredCodes = [
-      'P3800201C-020',
-      'P3802401C-030',
-      'P3800501C-040',
-      'MGP20ABAC893A100',
-      'MGP25AAAC894A075',
-      'MGP32A-AC895A025',
-      'C1G20-02AAT031A',
-      'C1G25-02AAT032'
-    ];
-
     let chips = [];
-    featuredCodes.forEach(code => {
-      const p = this.findByCode(code);
-      if (p) chips.push(p);
-    });
-
-    // If some not found, supplement with first items
-    if (chips.length < 8 && this.products.length > 0) {
-      chips = [...chips, ...this.products.slice(0, 8 - chips.length)];
+    if (this.currentFactory === 'SMC2') {
+      const featuredCodes = [
+        'C2Q12AAAL102-005',
+        'C2Q12AAAL102-010',
+        'C2Q12AAAL102-015',
+        'C2Q16AAAL103-010',
+        'C2Q20AAAL104-010',
+        'C2Q25AAAL105-015',
+        'C2Q32AAAL106-020'
+      ];
+      featuredCodes.forEach(code => {
+        const p = this.findByCode(code);
+        if (p) chips.push(p);
+      });
+      if (chips.length < 8) {
+        const smc2List = this.products.filter(p => p.factory === 'SMC2');
+        chips = [...chips, ...smc2List.slice(0, 8 - chips.length)];
+      }
+    } else {
+      const featuredCodes = [
+        'P3800201C-020',
+        'P3802401C-030',
+        'P3800501C-040',
+        'MGP20ABAC893A100',
+        'MGP25AAAC894A075',
+        'MGP32A-AC895A025',
+        'C1G20-02AAT031A',
+        'C1G25-02AAT032'
+      ];
+      featuredCodes.forEach(code => {
+        const p = this.findByCode(code);
+        if (p) chips.push(p);
+      });
+      if (chips.length < 8) {
+        const smc3List = this.products.filter(p => !p.factory || p.factory === 'SMC3');
+        chips = [...chips, ...smc3List.slice(0, 8 - chips.length)];
+      }
     }
 
     chips.forEach(p => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'chip-btn';
-      btn.innerHTML = `<b>${p.code}</b> <span class="chip-sub">(${p.name || p.category || 'SMC'})</span>`;
+      btn.innerHTML = `<b>${p.code}</b> <span class="chip-sub">(${p.name || p.category || p.factory || 'SMC'})</span>`;
       btn.title = `${p.code} - ${p.name || ''} (Định mức: ${p.settingQty || 10} cái/lượt)`;
       btn.addEventListener('click', () => {
         window.soundManager.playClick();

@@ -2837,3 +2837,57 @@ body.theme-dark .success-title {
   margin-top: 6px;
 }
 
+/* ==========================================================================
+   FACTORY SELECTOR (SMC2 / SMC3)
+   ========================================================================== */
+.factory-switch-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.btn-factory-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 2px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-factory-pill:hover {
+  border-color: var(--smc-blue);
+  color: var(--smc-blue);
+  background: var(--smc-blue-subtle);
+}
+
+.btn-factory-pill.active {
+  background: linear-gradient(135deg, var(--smc-blue) 0%, var(--smc-blue-dark) 100%);
+  border-color: var(--smc-blue);
+  color: var(--white);
+  box-shadow: var(--shadow-blue-glow);
+}
+
+.factory-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.btn-factory-pill.active .factory-pill-dot {
+  background: #34D399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.8);
+}
+

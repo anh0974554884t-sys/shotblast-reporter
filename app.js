@@ -1,4 +1,4 @@
-console.info('SHOTBLAST_APP_VERSION: 2026-10-30-stable-text-time-v4');
+console.info('SHOTBLAST_APP_VERSION: 2026-10-30-shift-time-v6');
 // ==========================================================================
 // MAIN SHOPFLOOR APPLICATION LOGIC - SHOTBLAST MES (SMC3)
 // 5-Step Ergonomic Workflow:
@@ -13,15 +13,22 @@ class ShotblastApp {
   constructor() {
     this.batches = [];
     this.workers = [];
-    this.machines = [
+    this.allMachines = [
       'SA01_SB01',
       'SA01_SB02',
       'SA01_SB03',
       'SA01_SB04',
       'SA01_SB05',
+      'SA02_SB01',
+      'SA02_SB02',
+      'SA02_SB03',
+      'SA02_SB04',
+      'SA02_SB05',
       'LA02_SB01'
     ];
-    this.currentMachine = 'SA01_SB01';
+    this.machines = [...this.allMachines];
+    this.currentFactory = localStorage.getItem('shotblast_factory') || 'SMC3';
+    this.currentMachine = this.currentFactory === 'SMC2' ? 'SA02_SB01' : 'SA01_SB01';
     this.currentWorker = null;
     this.currentShift = 1;
     this.currentChamber = '';
@@ -63,7 +70,10 @@ class ShotblastApp {
       btnToggleTheme: document.getElementById('btnToggleTheme'),
       btnFullscreen: document.getElementById('btnFullscreen'),
 
-      // Step 1: Chọn máy
+      // Step 1: Chọn máy & Nhà máy
+      btnFactorySMC3: document.getElementById('btnFactorySMC3'),
+      btnFactorySMC2: document.getElementById('btnFactorySMC2'),
+      inputFactory: document.getElementById('inputFactory'),
       machineSelector: document.getElementById('machineSelector'),
       inputMachine: document.getElementById('inputMachine'),
       btnOpenMachineSettings: document.getElementById('btnOpenMachineSettings'),
@@ -215,7 +225,6 @@ class ShotblastApp {
 
   async init() {
     this.startClock();
-    this.setupStableTimeInputs();
     this.bindEvents();
     this.initThemeAndSound();
 
@@ -323,28 +332,78 @@ class ShotblastApp {
   }
 
   // ==========================================
-  // STEP 1: MACHINES MANAGEMENT
+  // STEP 1: MACHINES & FACTORY MANAGEMENT
   // ==========================================
   async loadMachines() {
     try {
       const res = await fetch('/api/machines');
       if (res.ok) {
-        this.machines = await res.json();
+        this.allMachines = await res.json();
       } else {
         throw new Error('Offline');
       }
     } catch (e) {
       const cached = localStorage.getItem('shotblast_machines');
       if (cached) {
-        try { this.machines = JSON.parse(cached); } catch (ex) {}
+        try { this.allMachines = JSON.parse(cached); } catch (ex) {}
       }
-      if (!this.machines || this.machines.length === 0) {
-        this.machines = ['SA01_SB01', 'SA01_SB02', 'SA01_SB03', 'SA01_SB04', 'SA01_SB05', 'LA02_SB01'];
+      if (!this.allMachines || this.allMachines.length === 0) {
+        this.allMachines = [
+          'SA01_SB01', 'SA01_SB02', 'SA01_SB03', 'SA01_SB04', 'SA01_SB05',
+          'SA02_SB01', 'SA02_SB02', 'SA02_SB03', 'SA02_SB04', 'SA02_SB05',
+          'LA02_SB01'
+        ];
       }
     }
-    localStorage.setItem('shotblast_machines', JSON.stringify(this.machines));
+    localStorage.setItem('shotblast_machines', JSON.stringify(this.allMachines));
+    this.selectFactory(this.currentFactory, false);
     this.renderMachineButtons();
     this.updateMachineFilters();
+  }
+
+  selectFactory(factory, shouldRender = true) {
+    this.currentFactory = factory || 'SMC3';
+    localStorage.setItem('shotblast_factory', this.currentFactory);
+    if (this.elements.inputFactory) this.elements.inputFactory.value = this.currentFactory;
+
+    if (this.elements.btnFactorySMC3 && this.elements.btnFactorySMC2) {
+      if (this.currentFactory === 'SMC2') {
+        this.elements.btnFactorySMC2.classList.add('active');
+        this.elements.btnFactorySMC3.classList.remove('active');
+      } else {
+        this.elements.btnFactorySMC3.classList.add('active');
+        this.elements.btnFactorySMC2.classList.remove('active');
+      }
+    }
+
+    this.filterMachinesByFactory();
+
+    if (window.productManager) {
+      window.productManager.setFactory(this.currentFactory);
+      this.renderQuickProductChips();
+      this.renderDsspTable();
+    }
+
+    if (shouldRender) {
+      this.renderMachineButtons();
+      if (this.machines.length > 0) {
+        if (!this.machines.includes(this.currentMachine)) {
+          this.selectMachine(this.machines[0], false);
+        }
+      }
+    }
+    this.validateForm();
+  }
+
+  filterMachinesByFactory() {
+    if (this.currentFactory === 'SMC2') {
+      this.machines = this.allMachines.filter(m => m.startsWith('SA02') || m.startsWith('LA02') || m.includes('SMC2'));
+    } else {
+      this.machines = this.allMachines.filter(m => m.startsWith('SA01') || m.includes('SMC3') || (!m.startsWith('SA02') && !m.startsWith('LA02')));
+    }
+    if (this.machines.length === 0) {
+      this.machines = [...this.allMachines];
+    }
   }
 
   renderMachineButtons() {
@@ -710,6 +769,8 @@ class ShotblastApp {
     }
 
     if (window.soundManager) window.soundManager.playClick();
+    if (this.elements.inputStartTime.value) this.normalizeShiftTimeInput(this.elements.inputStartTime, false);
+    if (this.elements.inputEndTime.value) this.normalizeShiftTimeInput(this.elements.inputEndTime, false);
     this.validateShotTimes();
     this.validateForm();
   }
@@ -723,36 +784,78 @@ class ShotblastApp {
   // ==========================================
   // STEP 4: SHOT TIMES (START & END) & VALIDATION
   // ==========================================
-  setupStableTimeInputs() {
-    const setup = (input) => {
-      if (!input) return;
-      // Khong dung input type=time: mot so browser xoa gia tri khi chuyen focus.
-      input.type = 'text';
-      input.inputMode = 'numeric';
-      input.maxLength = 5;
-      input.placeholder = 'HH:MM';
-      input.autocomplete = 'off';
+  getShiftWindow() {
+    if (this.currentShift === 1) return { start: 360, end: 840, label: 'Ca 1 (06:00–14:00)' };
+    if (this.currentShift === 2) return { start: 840, end: 1320, label: 'Ca 2 (14:00–22:00)' };
+    return { start: 1320, end: 1800, label: 'Ca 3 (22:00–06:00)' };
+  }
 
-      const format = () => {
-        let digits = input.value.replace(/\D/g, '').slice(0, 4);
-        if (digits.length >= 3) digits = `${digits.slice(0, 2)}:${digits.slice(2)}`;
-        input.value = digits;
-      };
+  parseShiftTime(rawValue) {
+    const raw = String(rawValue || '').trim();
+    if (!raw) return { valid: false, empty: true };
 
-      input.addEventListener('input', format);
-      input.addEventListener('blur', () => {
-        const match = input.value.match(/^(\d{1,2}):(\d{1,2})$/);
-        if (!match) return;
-        const hour = Math.min(23, Number(match[1]));
-        const minute = Math.min(59, Number(match[2]));
-        input.value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-        this.validateShotTimes();
-        this.validateForm();
-      });
-    };
+    let hour;
+    let minute;
+    if (raw.includes(':')) {
+      const parts = raw.split(':');
+      if (parts.length !== 2 || !/^\d{1,2}$/.test(parts[0]) || !/^\d{1,2}$/.test(parts[1])) {
+        return { valid: false, message: 'Giờ không đúng định dạng' };
+      }
+      hour = Number(parts[0]);
+      minute = Number(parts[1]);
+    } else {
+      const digits = raw.replace(/\D/g, '');
+      if (digits.length < 3 || digits.length > 4) {
+        return { valid: false, message: 'Nhập 3–4 số, ví dụ 245 hoặc 1445' };
+      }
+      hour = Number(digits.slice(0, -2));
+      minute = Number(digits.slice(-2));
+    }
 
-    setup(this.elements.inputStartTime);
-    setup(this.elements.inputEndTime);
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour > 23 || minute > 59) {
+      return { valid: false, message: 'Giờ hoặc phút không hợp lệ' };
+    }
+
+    const windowInfo = this.getShiftWindow();
+    const base = hour * 60 + minute;
+    const candidates = [];
+    const add = value => { if (!candidates.includes(value)) candidates.push(value); };
+
+    add(base);
+    // Giờ 1–11 được hiểu theo ca. Ví dụ Ca 2: 2:45 → 14:45.
+    if (hour >= 1 && hour <= 11) add(base + 720);
+    // Ca 3: giờ sau nửa đêm thuộc ngày kế tiếp.
+    if (base < 360) add(base + 1440);
+    if (hour >= 10 && hour <= 11) add(base + 720);
+
+    const absoluteMinutes = candidates.find(value =>
+      value >= windowInfo.start && value < windowInfo.end
+    );
+
+    if (absoluteMinutes === undefined) {
+      return { valid: false, message: `${raw} không thuộc ${windowInfo.label}` };
+    }
+
+    const displayMinutes = absoluteMinutes % 1440;
+    const hh = String(Math.floor(displayMinutes / 60)).padStart(2, '0');
+    const mm = String(displayMinutes % 60).padStart(2, '0');
+    return { valid: true, value: `${hh}:${mm}`, absoluteMinutes };
+  }
+
+  normalizeShiftTimeInput(input, showMessage = true) {
+    const parsed = this.parseShiftTime(input.value);
+    if (parsed.valid) {
+      input.value = parsed.value;
+      input.dataset.absoluteMinutes = String(parsed.absoluteMinutes);
+      input.classList.remove('input-error');
+      return parsed;
+    }
+    delete input.dataset.absoluteMinutes;
+    if (!parsed.empty) {
+      input.classList.add('input-error');
+      if (showMessage) this.showToast(`⚠️ ${parsed.message}`, 'warn');
+    }
+    return parsed;
   }
 
   setTimeNow(field) {
@@ -773,48 +876,47 @@ class ShotblastApp {
   }
 
   validateShotTimes() {
-    const start = this.elements.inputStartTime.value;
-    const end = this.elements.inputEndTime.value;
-
+    const startInput = this.elements.inputStartTime;
+    const endInput = this.elements.inputEndTime;
     const alertEl = this.elements.timeValidationAlert;
     const badgeEl = this.elements.shotDurationBadge;
 
-    if (!start || !end) {
+    const startParsed = this.parseShiftTime(startInput.value);
+    const endParsed = this.parseShiftTime(endInput.value);
+
+    if (!startInput.value || !endInput.value) {
       if (alertEl) alertEl.classList.add('hidden');
       if (badgeEl) badgeEl.classList.add('hidden');
       return { valid: false, message: 'Vui lòng nhập cả giờ Bắt đầu và Dừng' };
     }
 
-    const [sh, sm] = start.split(':').map(Number);
-    const [eh, em] = end.split(':').map(Number);
-    let startMins = sh * 60 + sm;
-    let endMins = eh * 60 + em;
-
-    // Ca 3 allows crossing midnight (e.g. 23:30 to 00:15)
-    if (this.currentShift === 3) {
-      // If start is in the evening (>= 20:00) and end is in the early morning (<= 12:00)
-      if (startMins >= 1200 && endMins < 720) {
-        endMins += 1440; // add 24 hours
-      }
-    }
-
-    if (endMins <= startMins) {
+    if (!startParsed.valid || !endParsed.valid) {
+      const message = !startParsed.valid ? startParsed.message : endParsed.message;
       if (alertEl) {
-        alertEl.textContent = '⚠️ Giờ Dừng phải lớn hơn giờ Bắt đầu!';
+        alertEl.textContent = `⚠️ ${message}`;
         alertEl.classList.remove('hidden');
       }
       if (badgeEl) badgeEl.classList.add('hidden');
-      return { valid: false, message: 'Giờ Dừng phải lớn hơn giờ Bắt đầu!' };
+      return { valid: false, message };
     }
 
-    const duration = endMins - startMins;
+    if (endParsed.absoluteMinutes <= startParsed.absoluteMinutes) {
+      const message = 'Giờ Dừng phải lớn hơn giờ Bắt đầu trong cùng ca';
+      if (alertEl) {
+        alertEl.textContent = `⚠️ ${message}`;
+        alertEl.classList.remove('hidden');
+      }
+      if (badgeEl) badgeEl.classList.add('hidden');
+      return { valid: false, message };
+    }
+
+    const duration = endParsed.absoluteMinutes - startParsed.absoluteMinutes;
     if (alertEl) alertEl.classList.add('hidden');
     if (badgeEl) {
       badgeEl.textContent = `Thời lượng: ${duration} phút`;
       badgeEl.classList.remove('hidden');
     }
-
-    return { valid: true, duration: duration };
+    return { valid: true, duration };
   }
 
   // ==========================================
@@ -1071,19 +1173,19 @@ class ShotblastApp {
       } else {
         this.elements.submitValidationHint.classList.remove('hidden');
         if (!hasMachine) {
-          this.elements.submitValidationHint.textContent = 'Bước 1: Vui lòng chọn Máy bắn bi';
+          this.elements.submitValidationHint.textContent = 'Bước 1: Vui lòng chọn Máy Shotblast';
         } else if (!hasWorker) {
           this.elements.submitValidationHint.textContent = 'Bước 2: Vui lòng chọn Người thao tác';
         } else if (!hasShift) {
           this.elements.submitValidationHint.textContent = 'Bước 3: Vui lòng chọn Ca làm việc';
-        } else if (!this.elements.inputStartTime.value || !this.elements.inputEndTime.value) {
-          this.elements.submitValidationHint.textContent = 'Bước 4: Vui lòng nhập giờ Bắt đầu và Dừng';
-        } else if (!timeStatus.valid) {
-          this.elements.submitValidationHint.textContent = 'Bước 4: Giờ Dừng phải lớn hơn giờ Bắt đầu!';
         } else if (!hasProduct) {
-          this.elements.submitValidationHint.textContent = 'Bước 5: Vui lòng quét hoặc nhập Mã sản phẩm';
+          this.elements.submitValidationHint.textContent = 'Bước 4: Vui lòng quét hoặc nhập Mã sản phẩm';
         } else if (!hasChamber) {
-          this.elements.submitValidationHint.textContent = 'Bước 5: Vui lòng chọn Số buồng máy (1 – 6 buồng)';
+          this.elements.submitValidationHint.textContent = 'Bước 4: Vui lòng chọn Số buồng máy (1 – 6 buồng)';
+        } else if (!this.elements.inputStartTime.value || !this.elements.inputEndTime.value) {
+          this.elements.submitValidationHint.textContent = 'Bước 5: Vui lòng nhập giờ Bắt đầu và Dừng Shotblast';
+        } else if (!timeStatus.valid) {
+          this.elements.submitValidationHint.textContent = 'Bước 5: Giờ Dừng phải lớn hơn giờ Bắt đầu!';
         } else if (qty <= 0) {
           this.elements.submitValidationHint.textContent = 'Bước 5: Vui lòng nhập Số lượng xử lý (> 0 PCS)';
         }
@@ -1105,7 +1207,7 @@ class ShotblastApp {
 
   async submitBatch() {
     if (!this.currentMachine) {
-      this.showToast('⚠️ Bước 1: Vui lòng chọn Máy bắn bi!', 'warn');
+      this.showToast('⚠️ Bước 1: Vui lòng chọn Máy Shotblast!', 'warn');
       if (window.soundManager) window.soundManager.playError();
       this.highlightField(this.elements.machineSelector);
       return;
@@ -1122,9 +1224,26 @@ class ShotblastApp {
       return;
     }
 
+    const productCode = this.elements.inputProductCode.value.trim().toUpperCase();
+    if (!productCode) {
+      this.showToast('⚠️ Bước 4: Vui lòng quét hoặc nhập Mã sản phẩm!', 'warn');
+      if (window.soundManager) window.soundManager.playError();
+      this.elements.inputProductCode.focus();
+      this.focusedInput = this.elements.inputProductCode;
+      this.highlightField(this.elements.inputProductCode);
+      return;
+    }
+
+    if (!this.currentChamber) {
+      this.showToast('⚠️ Bước 4: Vui lòng chọn Số buồng máy (1 – 6 buồng)!', 'warn');
+      if (window.soundManager) window.soundManager.playError();
+      this.highlightField(this.elements.chamberSelector);
+      return;
+    }
+
     const timeStatus = this.validateShotTimes();
     if (!this.elements.inputStartTime.value || !this.elements.inputEndTime.value) {
-      this.showToast('⚠️ Bước 4: Vui lòng nhập giờ Bắt đầu và Dừng!', 'warn');
+      this.showToast('⚠️ Bước 5: Vui lòng nhập giờ Bắt đầu và Dừng Shotblast!', 'warn');
       if (window.soundManager) window.soundManager.playError();
       if (!this.elements.inputStartTime.value) {
         this.elements.inputStartTime.focus();
@@ -1137,26 +1256,9 @@ class ShotblastApp {
     }
 
     if (!timeStatus.valid) {
-      this.showToast('⚠️ Bước 4: Giờ Dừng phải lớn hơn giờ Bắt đầu!', 'warn');
+      this.showToast('⚠️ Bước 5: Giờ Dừng phải lớn hơn giờ Bắt đầu!', 'warn');
       if (window.soundManager) window.soundManager.playError();
       this.highlightField(this.elements.inputEndTime);
-      return;
-    }
-
-    const productCode = this.elements.inputProductCode.value.trim().toUpperCase();
-    if (!productCode) {
-      this.showToast('⚠️ Bước 5: Vui lòng quét hoặc nhập Mã sản phẩm!', 'warn');
-      if (window.soundManager) window.soundManager.playError();
-      this.elements.inputProductCode.focus();
-      this.focusedInput = this.elements.inputProductCode;
-      this.highlightField(this.elements.inputProductCode);
-      return;
-    }
-
-    if (!this.currentChamber) {
-      this.showToast('⚠️ Bước 5: Vui lòng chọn Số buồng máy (1 – 6 buồng)!', 'warn');
-      if (window.soundManager) window.soundManager.playError();
-      this.highlightField(this.elements.chamberSelector);
       return;
     }
 
@@ -1186,13 +1288,15 @@ class ShotblastApp {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     const monthStr = todayStr.substring(0, 7);
+    const factoryLine = this.currentFactory || (machine.startsWith('SA02') || machine.startsWith('LA02') ? 'SMC2' : 'SMC3');
 
     const newBatch = {
       date: todayStr,
       month: monthStr,
       shift: shift,
       machine: machine,
-      line: 'SMC3',
+      line: factoryLine,
+      factory: factoryLine,
       stage: 'Shotblast',
       turn: nextTurn,
       startTime: startTime,
@@ -2006,6 +2110,20 @@ class ShotblastApp {
     this.elements.btnToggleTheme.addEventListener('click', () => this.toggleTheme());
     this.elements.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
 
+    // Step 1: Factory Selector
+    if (this.elements.btnFactorySMC3) {
+      this.elements.btnFactorySMC3.addEventListener('click', () => {
+        if (window.soundManager) window.soundManager.playClick();
+        this.selectFactory('SMC3', true);
+      });
+    }
+    if (this.elements.btnFactorySMC2) {
+      this.elements.btnFactorySMC2.addEventListener('click', () => {
+        if (window.soundManager) window.soundManager.playClick();
+        this.selectFactory('SMC2', true);
+      });
+    }
+
     // Step 2: Operator Search Events
     this.elements.inputOperatorSearch.addEventListener('focus', () => {
       this.focusedInput = this.elements.inputOperatorSearch;
@@ -2044,12 +2162,22 @@ class ShotblastApp {
       this.setTimeNow('end');
     });
 
-    this.elements.inputStartTime.addEventListener('input', () => {
+    const keepTimeDigits = (input) => {
+      let cleaned = input.value.replace(/[^0-9:]/g, '');
+      if (!cleaned.includes(':')) cleaned = cleaned.slice(0, 4);
+      input.value = cleaned;
+      delete input.dataset.absoluteMinutes;
+      this.validateForm();
+    };
+    this.elements.inputStartTime.addEventListener('input', () => keepTimeDigits(this.elements.inputStartTime));
+    this.elements.inputEndTime.addEventListener('input', () => keepTimeDigits(this.elements.inputEndTime));
+    this.elements.inputStartTime.addEventListener('blur', () => {
+      this.normalizeShiftTimeInput(this.elements.inputStartTime);
       this.validateShotTimes();
       this.validateForm();
     });
-
-    this.elements.inputEndTime.addEventListener('input', () => {
+    this.elements.inputEndTime.addEventListener('blur', () => {
+      this.normalizeShiftTimeInput(this.elements.inputEndTime);
       this.validateShotTimes();
       this.validateForm();
     });
@@ -2126,6 +2254,8 @@ class ShotblastApp {
     const padBtns = this.elements.touchNumpad.querySelectorAll('.btn-pad');
     padBtns.forEach(btn => {
       btn.addEventListener('click', () => {
+        if (this.elements.inputStartTime.value) this.normalizeShiftTimeInput(this.elements.inputStartTime, false);
+        if (this.elements.inputEndTime.value) this.normalizeShiftTimeInput(this.elements.inputEndTime, false);
         this.focusedInput = this.elements.inputQuantity;
         const val = btn.getAttribute('data-val');
         if (val) this.handleNumpad(val);

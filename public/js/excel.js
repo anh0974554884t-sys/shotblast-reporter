@@ -1,5 +1,6 @@
 // ==========================================================================
-// EXCEL REPORT EXPORTER (EXACT FORMAT MATCHING FACTORY EXCEL SHEET)
+// EXCEL REPORT EXPORTER (KHỚP CHUẨN FORM MẪU BÁO CÁO CÔNG TY SMC)
+// Dựa trên file mẫu SMC3_SHOTBLAST_20261027.xlsm (Sheet MENU từ Ngày -> Tổng thời gian hoạt động)
 // ==========================================================================
 
 function exportProductionToExcel(batches, products, meta = {}) {
@@ -12,172 +13,214 @@ function exportProductionToExcel(batches, products, meta = {}) {
   const dateStr = meta.date || now.toISOString().split('T')[0];
   const monthStr = meta.month || dateStr.substring(0, 7);
   const lineStr = meta.line || 'SMC3';
-  const stageStr = meta.stage || 'Shotblast';
 
-  // Calculate total quantity
-  const totalQty = batches.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0);
+  // Helper map products for quick lookup
+  const productMap = new Map();
+  if (Array.isArray(products)) {
+    products.forEach(p => {
+      if (p && p.code) {
+        productMap.set(p.code.toUpperCase(), p);
+      }
+    });
+  }
 
-  // Build Sheet 1: Production Report (Báo Cáo Sản Lượng Ngày)
-  const sheetData = [];
+  // Build Sheet 1: MENU (Form mẫu chuẩn của SMC Anodizing Shotblast)
+  const menuData = [];
 
-  // Row 1: Path & Stamp header info
-  sheetData.push([
-    "Đường dẫn lưu trữ:",
-    "Z:\\Production (生産)\\Surface Treat\\Hiếu - Anodizing\\BCSX_Anodizing\\AAA Dữ liệu báo cáo hàng ngày.xlsx",
+  // Row 1: Japanese Subheaders (Hàng 4 của form mẫu)
+  menuData.push([
+    "作業日",                 // 1: Ngày
+    "年月",                   // 2: Tháng
+    "直",                     // 3: Ca
+    "ライン",                 // 4: Dây chuyền
+    "固定",                   // 5: Công đoạn
+    "機械番号",               // 6: Mã số thiết bị
+    "回",                     // 7: Lượt
+    "品番",                   // 8: Mã sản phẩm
+    "機種",                   // 9: Chủng loại
+    "生産分類",               // 10: Phân loại sản xuất
+    "設定 稼働率",            // 11: Hiệu suất thiết đặt
+    "設定サイクル(秒/個)",     // 12: Cycletime thiết đặt
+    "可動率",                 // 13: Hiệu suất khả dụng
+    "稼働率",                 // 14: Tỉ lệ hoạt động
+    "実行サイクルタイム(秒/個)",// 15: Cycletime thực tế
+    "生産体制",               // 16: Số ca sản xuất
+    "生産数",                 // 17: Số lượng xử lý
+    "チャンバー数",           // 18: Số buồng
+    "設定 数/バッチ",         // 19: Số lượng/mẻ thiết đặt
+    "チェック",               // 20: Kiểm tra
+    "開始",                   // 21: Bắt đầu
+    "終了",                   // 22: Kết thúc
+    "総運転時間(分)"           // 23: Tổng thời gian hoạt động
+  ]);
+
+  // Row 2: Units row (Hàng 5 của form mẫu)
+  menuData.push([
+    "", "", "", "", "", "", "", "", "", "",
     "", "", "", "", "",
-    "BỘ PHẬN SẢN XUẤT (Production Dept)",
+    "(2直)",                  // 16
+    "(個)",                   // 17
     "",
-    "TỔNG SẢN LƯỢNG NGÀY:"
-  ]);
-
-  // Row 2: Subtitle & Total banner
-  sheetData.push([
-    "DÂY CHUYỀN:",
-    lineStr,
-    "CÔNG ĐOẠN:",
-    stageStr,
-    "", "", "",
-    `Ngày xác nhận: ${dateStr} - Người lập: ${meta.worker || 'V.T.Hiếu'}`,
+    "(個)",                   // 19
     "",
-    totalQty // Total qty in prominent cell
+    "開始",                   // 21
+    "終了",                   // 22
+    "総運転時間(分)"           // 23
   ]);
 
-  // Row 3: Blank separator
-  sheetData.push([]);
-
-  // Row 4: Japanese subheaders
-  sheetData.push([
-    "年月",       // Tháng
-    "直",         // Ca
-    "ライン",     // Dây chuyền
-    "固定",       // Công đoạn
-    "機械番号",   // Mã số thiết bị
-    "回",         // Lượt
-    "開始",       // Bắt đầu
-    "停止",       // Dừng
-    "品番",       // Mã sản phẩm
-    "生産数 (個)",// Số lượng xử lý
-    "チャンバー数",// Số buồng
-    "設定 数/バッチ (個)", // SL/lượt đặt
-    "登録日時",    // Thời gian ghi
-    "担当者"      // Người thao tác
+  // Row 3: Vietnamese Headers (Hàng 6 của form mẫu chuẩn công ty)
+  menuData.push([
+    "Ngày",                   // 1
+    "Tháng",                  // 2
+    "Ca",                     // 3
+    "Dây chuyền",             // 4
+    "Công Đoạn",              // 5
+    "Mã số thiết bị",         // 6
+    "Lượt",                   // 7
+    "Mã sản phẩm",            // 8
+    "Chủng loại",             // 9
+    "Phân loại sản xuất",     // 10
+    "Hiệu suất thiết đặt",    // 11
+    "Cycletime thiết đặt",    // 12
+    "Hiệu suất khả dụng",     // 13
+    "Tỉ lệ hoạt động",        // 14
+    "Cycletime thực tế",      // 15
+    "Số ca sản xuất",         // 16
+    "Số lượng xử lý",         // 17
+    "Số buồng",               // 18
+    "Số lượng/mẻ thiết đặt",  // 19
+    "Kiểm tra",               // 20
+    "Bắt đầu",                // 21
+    "Kết thúc",               // 22
+    "Tổng thời gian hoạt động"// 23
   ]);
 
-  // Row 5: Vietnamese Headers (Matching factory standards)
-  sheetData.push([
-    "Tháng",
-    "Ca",
-    "Dây chuyền",
-    "Công Đoạn",
-    "Mã số thiết bị",
-    "Lượt",
-    "Bắt đầu",
-    "Dừng",
-    "Mã sản phẩm",
-    "Số lượng xử lý",
-    "Số buồng",
-    "SL/lượt đặt",
-    "Thời gian ghi",
-    "Người thao tác"
-  ]);
-
-  // Row 6+: Data rows
+  // Row 4+: Data Rows (Tính toán theo dữ liệu thực tế nhập từ Tablet)
   batches.forEach((b, idx) => {
-    // Format timestamp nicely
-    let timeFormatted = b.timestamp || '';
-    if (timeFormatted.includes('T')) {
-      const parts = timeFormatted.split('T');
-      timeFormatted = parts[1].substring(0, 8) + ' ' + parts[0];
+    const code = (b.productCode || '').trim().toUpperCase();
+    const prod = productMap.get(code) || {};
+
+    // Tính thời gian hoạt động (phút)
+    let durationMins = 0;
+    if (b.startTime && b.endTime && b.startTime.includes(':') && b.endTime.includes(':')) {
+      const [sh, sm] = b.startTime.split(':').map(Number);
+      const [eh, em] = b.endTime.split(':').map(Number);
+      let startM = sh * 60 + sm;
+      let endM = eh * 60 + em;
+      if (endM < startM) endM += 1440; // Xử lý qua nửa đêm ca 3
+      durationMins = endM - startM;
     }
 
-    sheetData.push([
-      b.month || monthStr,
-      Number(b.shift) || 1,
-      b.line || lineStr,
-      b.stage || stageStr,
-      b.machine || 'SA01_SB01',
-      b.turn || (idx + 1),
-      b.startTime || '',
-      b.endTime || '',
-      b.productCode || '',
-      Number(b.quantity) || 0,
-      Number(b.chamber) || 1,
-      Number(b.settingQty) || 0,
-      timeFormatted,
-      b.operator || b.worker || 'Người thao tác'
+    const qty = Number(b.quantity) || 0;
+    let actualCycle = '';
+    if (qty > 0 && durationMins > 0) {
+      actualCycle = Number(((durationMins * 60) / qty).toFixed(1));
+    }
+
+    const effSetting = prod.efficiency !== undefined ? prod.efficiency : 0.76;
+    const cycleSetting = prod.cycleTime !== undefined ? prod.cycleTime : '';
+    const chamber = Number(b.chamber) || 1;
+    const settingQty = Number(b.settingQty) || prod.settingQty || 10;
+    const batchLine = b.line || b.factory || lineStr;
+
+    menuData.push([
+      b.date || dateStr,                              // 1: Ngày
+      b.month || monthStr,                            // 2: Tháng
+      Number(b.shift) || 1,                           // 3: Ca
+      batchLine,                                      // 4: Dây chuyền (SMC2 / SMC3)
+      b.stage || 'Shotblast',                         // 5: Công Đoạn
+      b.machine || 'SA01_SB01',                       // 6: Mã số thiết bị
+      b.turn || (idx + 1),                            // 7: Lượt
+      code,                                           // 8: Mã sản phẩm
+      prod.series || prod.category || prod.name || '',// 9: Chủng loại
+      "Sản xuất/生産",                                // 10: Phân loại sản xuất
+      effSetting,                                     // 11: Hiệu suất thiết đặt
+      cycleSetting,                                   // 12: Cycletime thiết đặt
+      "",                                             // 13: Hiệu suất khả dụng (để trống cho công ty tính)
+      "",                                             // 14: Tỉ lệ hoạt động
+      actualCycle,                                    // 15: Cycletime thực tế
+      2,                                              // 16: Số ca sản xuất (2 ca)
+      qty,                                            // 17: Số lượng xử lý
+      chamber,                                        // 18: Số buồng
+      settingQty,                                     // 19: Số lượng/mẻ thiết đặt
+      "OK",                                           // 20: Kiểm tra
+      b.startTime || '',                              // 21: Bắt đầu
+      b.endTime || '',                                // 22: Kết thúc
+      durationMins                                    // 23: Tổng thời gian hoạt động (phút)
     ]);
   });
-
-  // Summary Row at the end
-  sheetData.push([]);
-  sheetData.push([
-    "TỔNG CỘNG:",
-    "", "", "", "", "", "",
-    `${batches.length} lượt`,
-    "",
-    totalQty,
-    "", "", "", ""
-  ]);
 
   // Create workbook
   const wb = XLSX.utils.book_new();
 
   // Convert array of arrays to worksheet
-  const ws1 = XLSX.utils.aoa_to_sheet(sheetData);
+  const wsMenu = XLSX.utils.aoa_to_sheet(menuData);
 
-  // Set column widths
-  ws1['!cols'] = [
-    { wch: 12 }, // Tháng
-    { wch: 8 },  // Ca
-    { wch: 12 }, // Dây chuyền
-    { wch: 14 }, // Công đoạn
-    { wch: 16 }, // Mã thiết bị
-    { wch: 8 },  // Lượt
-    { wch: 10 }, // Bắt đầu
-    { wch: 10 }, // Dừng
-    { wch: 22 }, // Mã sản phẩm
-    { wch: 16 }, // Số lượng xử lý
-    { wch: 12 }, // Số buồng
-    { wch: 20 }, // SL/lượt đặt
-    { wch: 20 }, // Thời gian ghi
-    { wch: 18 }  // Người thao tác
+  // Set column widths chuẩn xác cho 23 cột
+  wsMenu['!cols'] = [
+    { wch: 12 }, // 1: Ngày
+    { wch: 10 }, // 2: Tháng
+    { wch: 6 },  // 3: Ca
+    { wch: 12 }, // 4: Dây chuyền
+    { wch: 12 }, // 5: Công Đoạn
+    { wch: 14 }, // 6: Mã số thiết bị
+    { wch: 6 },  // 7: Lượt
+    { wch: 22 }, // 8: Mã sản phẩm
+    { wch: 18 }, // 9: Chủng loại
+    { wch: 16 }, // 10: Phân loại sản xuất
+    { wch: 18 }, // 11: Hiệu suất thiết đặt
+    { wch: 18 }, // 12: Cycletime thiết đặt
+    { wch: 16 }, // 13: Hiệu suất khả dụng
+    { wch: 14 }, // 14: Tỉ lệ hoạt động
+    { wch: 18 }, // 15: Cycletime thực tế
+    { wch: 14 }, // 16: Số ca sản xuất
+    { wch: 14 }, // 17: Số lượng xử lý
+    { wch: 10 }, // 18: Số buồng
+    { wch: 20 }, // 19: Số lượng/mẻ thiết đặt
+    { wch: 10 }, // 20: Kiểm tra
+    { wch: 10 }, // 21: Bắt đầu
+    { wch: 10 }, // 22: Kết thúc
+    { wch: 22 }  // 23: Tổng thời gian hoạt động
   ];
 
-  // Append Sheet 1 (Name: '1' or 'Bao_Cao_Ngay')
-  XLSX.utils.book_append_sheet(wb, ws1, "1");
+  // Append Sheet 1: MENU
+  XLSX.utils.book_append_sheet(wb, wsMenu, "MENU");
 
-  // Build Sheet 2: DSSP (Danh Sách Sản Phẩm Master)
-  if (products && products.length > 0) {
-    const dsspData = [
-      ["DANH MỤC SẢN PHẨM & ĐỊNH MỨC THIẾT ĐẶT (DSSP) - LINE SMC3 SHOTBLAST"],
-      ["Cập nhật ngày: " + dateStr],
-      [],
-      ["STT", "Mã sản phẩm (品番)", "Tên quy cách sản phẩm", "SL/lượt đặt (設定 数/バッチ)", "Ghi chú"]
+  // Sheet 2: Danh sách sản phẩm master (DSSP)
+  if (Array.isArray(products) && products.length > 0) {
+    const dsspRows = [
+      ["STT", "Nhà máy", "Mã sản phẩm", "Chủng loại", "Quy cách", "SL/mẻ (Shotblast)", "Cycletime (s)", "Hiệu suất"]
     ];
 
     products.forEach((p, i) => {
-      dsspData.push([
-        i + 1,
+      dsspRows.push([
+        p.stt || (i + 1),
+        p.factory || 'SMC3',
         p.code,
+        p.category || '',
         p.name || '',
         Number(p.settingQty) || 10,
-        p.notes || ''
+        p.cycleTime || '',
+        p.efficiency || 0.76
       ]);
     });
 
-    const ws2 = XLSX.utils.aoa_to_sheet(dsspData);
-    ws2['!cols'] = [
+    const wsDssp = XLSX.utils.aoa_to_sheet(dsspRows);
+    wsDssp['!cols'] = [
       { wch: 6 },
+      { wch: 10 },
       { wch: 24 },
-      { wch: 28 },
-      { wch: 22 },
-      { wch: 24 }
+      { wch: 18 },
+      { wch: 26 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 12 }
     ];
-    XLSX.utils.book_append_sheet(wb, ws2, "DSSP");
+    XLSX.utils.book_append_sheet(wb, wsDssp, "DSSP");
   }
 
   // Trigger download
-  const filename = `Bao_Cao_San_Luong_Shotblast_${dateStr}.xlsx`;
+  const filename = `BCSX_Shotblast_${lineStr}_${dateStr}.xlsx`;
   XLSX.writeFile(wb, filename);
 
   return filename;
