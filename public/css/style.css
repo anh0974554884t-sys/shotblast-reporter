@@ -109,19 +109,21 @@ body {
   color: var(--text-primary);
   line-height: 1.4;
   overflow-x: hidden;
-  height: 100vh;
+  overflow-y: auto;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   padding: 10px 14px;
   gap: 10px;
   max-width: 1920px;
   margin: 0 auto;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .font-mono {
@@ -407,30 +409,27 @@ body {
 }
 
 /* ==========================================================================
-   VIEW 1: OPERATOR WORKSPACE (SINGLE-SCREEN FIT, NO SCROLL)
+   VIEW 1: OPERATOR WORKSPACE (RESPONSIVE & NATURAL SCROLL)
    ========================================================================== */
 .operator-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  height: calc(100vh - 84px);
-  max-height: calc(100vh - 84px);
-  overflow: hidden;
+  min-height: calc(100vh - 84px);
+  overflow: visible;
 }
 
 .operator-col-left {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  height: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .operator-col-right {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Step Card Base */
@@ -2890,4 +2889,89 @@ body.theme-dark .success-title {
   background: #34D399;
   box-shadow: 0 0 8px rgba(52, 211, 153, 0.8);
 }
+
+/* ==========================================================================
+   RETROACTIVE DATE & 30-DAY HISTORY STYLES
+   ========================================================================== */
+.btn-retro-date-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-subtle);
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-retro-date-trigger:hover {
+  background: var(--smc-blue-subtle);
+  border-color: var(--smc-blue);
+  color: var(--smc-blue);
+}
+
+.btn-retro-date-trigger.retro-active {
+  background: #FEF3C7;
+  border-color: #F59E0B;
+  color: #B45309;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+  animation: pulseWarning 2s infinite;
+}
+
+@keyframes pulseWarning {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.retro-warning-banner {
+  background: #FFFBEB;
+  border: 1px solid #FCD34D;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.retro-warning-banner span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #92400E;
+}
+
+.btn-reset-live-date {
+  background: #B45309;
+  color: #FFFFFF;
+  border: none;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.date-history-select {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.date-history-select:focus {
+  border-color: var(--smc-blue);
+}
+
 

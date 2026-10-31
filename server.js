@@ -58,21 +58,21 @@ if (!fs.existsSync(MACHINES_FILE)) {
 }
 
 const DEFAULT_WORKERS = [
-  { id: "02623124", name: "Nguyễn Công Hải", machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
-  { id: "02620127", name: "Lê Duy Tuấn", machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
-  { id: "02524300", name: "Nguyễn Văn Kiên", machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
-  { id: "02526502", name: "Trịnh Trần Huỳnh Hiệp", machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
-  { id: "02623115", name: "Nguyễn Văn Sỹ", machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
-  { id: "02620534", name: "Nguyễn Ngọc Tiến", machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
-  { id: "02627625", name: "Nguyễn Hữu Nghĩa", machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
-  { id: "02629580", name: "Phan Nhật Trường", machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
-  { id: "02629599", name: "Đặng Minh Phương Hiệp", machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
-  { id: "02622295", name: "Nguyễn Hoàng Huy", machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
-  { id: "02520340", name: "Lê Duy Hải", machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
-  { id: "02646462", name: "Nguyễn Nhất Tâm", machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
-  { id: "02622462", name: "Huỳnh Chí Cường", machines: ["SA01_SB05"], machine: "SA01_SB05", role: "Công nhân vận hành" },
-  { id: "02642721", name: "Trương Văn Thiện", machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
-  { id: "02644589", name: "Phan Văn Tuyên", machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" }
+  { id: "02623115", name: "Nguyễn Văn Sỹ", shift: 1, machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
+  { id: "02629580", name: "Phan Nhật Trường", shift: 2, machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
+  { id: "02629599", name: "Đặng Minh Phương Hiệp", shift: 3, machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
+  { id: "02623124", name: "Nguyễn Công Hải", shift: 1, machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
+  { id: "02620534", name: "Nguyễn Ngọc Tiến", shift: 2, machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
+  { id: "02622295", name: "Nguyễn Hoàng Huy", shift: 3, machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
+  { id: "02620127", name: "Lê Duy Tuấn", shift: 1, machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
+  { id: "02520340", name: "Lê Duy Hải", shift: 2, machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
+  { id: "02644589", name: "Phan Văn Tuyên", shift: 3, machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
+  { id: "02622462", name: "Huỳnh Chí Cường", shift: 1, machines: ["SA01_SB05"], machine: "SA01_SB05", role: "Công nhân vận hành" },
+  { id: "02646462", name: "Nguyễn Nhất Tâm", shift: 1, machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
+  { id: "02642721", name: "Trương Văn Thiện", shift: 2, machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
+  { id: "02524300", name: "Nguyễn Văn Kiên", shift: 1, machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
+  { id: "02526502", name: "Trịnh Trần Huỳnh Hiệp", shift: 2, machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
+  { id: "02627625", name: "Nguyễn Hữu Nghĩa", shift: 3, machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" }
 ];
 
 if (!fs.existsSync(WORKERS_FILE)) {

@@ -45,6 +45,9 @@
         <div class="live-clock-pill">
           <span class="live-dot pulse"></span>
           <span id="liveDate" class="live-date">24/10/2026</span>
+          <button type="button" id="btnOpenRetroDateModal" class="btn-retro-date-trigger" title="Nhập lại ngày cũ (Cần mật khẩu quản lý: smc123)">
+            🔒 Đổi ngày
+          </button>
           <span class="divider">|</span>
           <span id="liveTime" class="live-time">18:30:00</span>
           <span class="divider">|</span>
@@ -114,6 +117,12 @@
       <!-- LEFT COLUMN: STEPS 1, 2, 3 (SETUP) & STEP 5 (PRODUCT) -->
       <section class="operator-col-left">
         
+        <!-- Retroactive Date Warning Banner -->
+        <div id="retroactiveDateBanner" class="retro-warning-banner hidden">
+          <span>⚠️ ĐANG NHẬP NGÀY CŨ: <b id="displayRetroDate" class="font-mono text-accent">--/--/----</b></span>
+          <button type="button" id="btnCancelRetroDate" class="btn-reset-live-date">↺ Về ngày hôm nay</button>
+        </div>
+
         <!-- STEP 1, 2, 3: SETUP CARD -->
         <div class="step-card" id="stepSetupCard">
           
@@ -150,13 +159,41 @@
             <input type="hidden" id="inputMachine" value="SA01_SB01">
           </div>
 
-          <!-- STEP 2: NGƯỜI THAO TÁC -->
-          <div class="step-subblock" id="blockStep2Operator">
+          <!-- STEP 2: CHỌN CA (ĐẶT TRƯỚC NGƯỜI THAO TÁC) -->
+          <div class="step-subblock" id="blockStep2Shift">
             <div class="step-header compact-header">
               <span class="step-number">2</span>
               <div class="step-titles">
+                <h2 class="step-title">Chọn ca</h2>
+                <span class="step-sub">Tự nhận theo giờ, bấm nút để đổi và tự động gợi ý người theo lịch</span>
+              </div>
+              <span id="shiftAutoBadge" class="shift-auto-badge">⚡ Giờ hiện tại</span>
+            </div>
+
+            <div class="shift-btn-grid" id="shiftSelector">
+              <button type="button" class="btn-shift-pill active" data-shift="1">
+                <span class="shift-name">Ca 1</span>
+                <span class="shift-hours">06:00 – 14:00</span>
+              </button>
+              <button type="button" class="btn-shift-pill" data-shift="2">
+                <span class="shift-name">Ca 2</span>
+                <span class="shift-hours">14:00 – 22:00</span>
+              </button>
+              <button type="button" class="btn-shift-pill" data-shift="3">
+                <span class="shift-name">Ca 3</span>
+                <span class="shift-hours">22:00 – 06:00 (qua ngày)</span>
+              </button>
+            </div>
+            <input type="hidden" id="inputShift" value="1">
+          </div>
+
+          <!-- STEP 3: NGƯỜI THAO TÁC (TỰ ĐỀ XUẤT THEO MÁY + CA) -->
+          <div class="step-subblock" id="blockStep3Operator">
+            <div class="step-header compact-header">
+              <span class="step-number">3</span>
+              <div class="step-titles">
                 <h2 class="step-title">Người thao tác</h2>
-                <span class="step-sub" id="operatorMachineHint">Ưu tiên người thuộc máy đã chọn (cho phép đổi người khác)</span>
+                <span class="step-sub" id="operatorMachineHint">Tự động chọn theo máy & ca (có thể đổi nếu thay ca đột xuất)</span>
               </div>
               <button type="button" id="btnOpenWorkerSettings" class="btn-pill-action" title="Quản lý danh sách người thao tác">
                 👥 Quản lý người
@@ -211,34 +248,6 @@
               <input type="hidden" id="inputWorkerName" value="">
               <input type="hidden" id="inputWorkerId" value="">
             </div>
-          </div>
-
-          <!-- STEP 3: CHỌN CA -->
-          <div class="step-subblock" id="blockStep3Shift">
-            <div class="step-header compact-header">
-              <span class="step-number">3</span>
-              <div class="step-titles">
-                <h2 class="step-title">Chọn ca</h2>
-                <span class="step-sub">Tự nhận theo giờ hiện tại, bấm nút để đổi tay</span>
-              </div>
-              <span id="shiftAutoBadge" class="shift-auto-badge">⚡ Giờ hiện tại</span>
-            </div>
-
-            <div class="shift-btn-grid" id="shiftSelector">
-              <button type="button" class="btn-shift-pill active" data-shift="1">
-                <span class="shift-name">Ca 1</span>
-                <span class="shift-hours">06:00 – 14:00</span>
-              </button>
-              <button type="button" class="btn-shift-pill" data-shift="2">
-                <span class="shift-name">Ca 2</span>
-                <span class="shift-hours">14:00 – 22:00</span>
-              </button>
-              <button type="button" class="btn-shift-pill" data-shift="3">
-                <span class="shift-name">Ca 3</span>
-                <span class="shift-hours">22:00 – 06:00 (qua ngày)</span>
-              </button>
-            </div>
-            <input type="hidden" id="inputShift" value="1">
           </div>
 
         </div>
@@ -544,6 +553,12 @@
           </div>
 
           <div class="toolbar-right">
+            <!-- 30-Day History Selector (Cutoff at 6h sáng) -->
+            <select id="filterProductionDate" class="date-history-select" title="Chọn ngày sản xuất (Hôm nay & 30 ngày trước)">
+              <option value="today">📅 Hôm nay (Ngày sản xuất hiện tại)</option>
+              <option value="all">📅 Tất cả (30 ngày gần nhất)</option>
+            </select>
+
             <!-- Filter Ca -->
             <select id="filterShift" class="form-select-sm">
               <option value="">Tất cả Ca</option>
@@ -1086,6 +1101,64 @@
       </div>
     </div>
 
+    <!-- ======================================================================
+         MODAL: RETROACTIVE DATE SELECTION (PROTECTED WITH PIN/PASSWORD smc123)
+         ====================================================================== -->
+    <div id="retroDateModal" class="modal-overlay hidden">
+      <div class="modal-card" style="max-width: 440px;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">📅</span>
+            <h3>Chọn ngày nhập lại dữ liệu cũ</h3>
+          </div>
+          <button type="button" class="btn-close-modal" id="btnCloseRetroDateModal">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 16px 20px;">
+          <p class="text-sm text-muted" style="margin-bottom: 14px; line-height: 1.4;">
+            Chức năng chỉ dành cho quản lý nhập bù hoặc sửa dữ liệu ngày trước. Vui lòng nhập mật khẩu xác nhận.
+          </p>
+          
+          <div style="margin-bottom: 14px;">
+            <label class="form-label" for="inputRetroPassword" style="display: block; font-weight: 700; margin-bottom: 6px; font-size: 0.88rem;">
+              🔑 Mật khẩu quản lý:
+            </label>
+            <input 
+              type="password" 
+              id="inputRetroPassword" 
+              class="form-control form-control-lg font-mono" 
+              placeholder="Nhập mật khẩu (smc123)..." 
+              autocomplete="off"
+            >
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <label class="form-label" for="inputTargetDate" style="display: block; font-weight: 700; margin-bottom: 6px; font-size: 0.88rem;">
+              📆 Chọn ngày sản xuất cần ghi:
+            </label>
+            <input 
+              type="date" 
+              id="inputTargetDate" 
+              class="form-control form-control-lg font-mono"
+            >
+          </div>
+
+          <div id="retroPasswordError" class="inline-error-alert hidden" style="margin-bottom: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span>Mật khẩu không đúng! Mật khẩu quản lý được yêu cầu.</span>
+          </div>
+
+          <div class="modal-actions-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px;">
+            <button type="button" class="btn-secondary btn-touch-lg" id="btnCancelRetroModal">
+              ✕ Hủy bỏ
+            </button>
+            <button type="button" class="btn-primary btn-touch-lg" id="btnConfirmRetroDate">
+              ✓ Xác nhận ngày
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toastContainer" class="toast-container"></div>
 
@@ -1110,6 +1183,6 @@
   <script src="js/dssp.js"></script>
   <script src="js/excel.js"></script>
   <script src="js/scanner.js"></script>
-  <script src="js/app.js?v=20261030-shift-time-v6"></script>
+  <script src="js/app.js?v=20261031-shift-worker-v7"></script>
 </body>
 </html>

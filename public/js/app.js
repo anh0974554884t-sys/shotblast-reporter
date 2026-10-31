@@ -1,4 +1,4 @@
-console.info('SHOTBLAST_APP_VERSION: 2026-10-30-shift-time-v6');
+console.info('SHOTBLAST_APP_VERSION: 2026-10-31-shift-worker-v7');
 // ==========================================================================
 // MAIN SHOPFLOOR APPLICATION LOGIC - SHOTBLAST MES (SMC3)
 // 5-Step Ergonomic Workflow:
@@ -32,6 +32,7 @@ class ShotblastApp {
     this.currentWorker = null;
     this.currentShift = 1;
     this.currentChamber = '';
+    this.retroactiveDate = null; // null = live production date (cut-off 6h sáng)
     this.isOnline = false;
     this.activePin = '';
     this.focusedInput = null;
@@ -47,9 +48,13 @@ class ShotblastApp {
 
   cacheElements() {
     this.elements = {
-      // Clocks & Header
+      // Clocks & Header & Retroactive Date
       liveDate: document.getElementById('liveDate'),
       liveTime: document.getElementById('liveTime'),
+      btnOpenRetroDateModal: document.getElementById('btnOpenRetroDateModal'),
+      retroactiveDateBanner: document.getElementById('retroactiveDateBanner'),
+      displayRetroDate: document.getElementById('displayRetroDate'),
+      btnCancelRetroDate: document.getElementById('btnCancelRetroDate'),
       currentTurnBadge: document.getElementById('currentTurnBadge'),
       syncBadge: document.getElementById('syncBadge'),
 
@@ -153,10 +158,20 @@ class ShotblastApp {
       filterShift: document.getElementById('filterShift'),
       filterMachine: document.getElementById('filterMachine'),
       logFilterSummary: document.getElementById('logFilterSummary'),
+      filterProductionDate: document.getElementById('filterProductionDate'),
       tableFooterTotalQty: document.getElementById('tableFooterTotalQty'),
       tableFooterSummary: document.getElementById('tableFooterSummary'),
       btnExportExcel: document.getElementById('btnExportExcel'),
       btnOpenClearCaModal: document.getElementById('btnOpenClearCaModal'),
+
+      // Retroactive Date Modal
+      retroDateModal: document.getElementById('retroDateModal'),
+      btnCloseRetroDateModal: document.getElementById('btnCloseRetroDateModal'),
+      inputRetroPassword: document.getElementById('inputRetroPassword'),
+      inputTargetDate: document.getElementById('inputTargetDate'),
+      retroPasswordError: document.getElementById('retroPasswordError'),
+      btnCancelRetroModal: document.getElementById('btnCancelRetroModal'),
+      btnConfirmRetroDate: document.getElementById('btnConfirmRetroDate'),
 
       // PIN Modal
       pinModal: document.getElementById('pinModal'),
@@ -246,6 +261,7 @@ class ShotblastApp {
 
     // 5. Batches data
     await this.loadBatches();
+    this.populateHistoryDateFilter();
     this.updateNextTurnNumber();
     this.renderProductionTable();
     this.updateKPIs();
@@ -258,7 +274,7 @@ class ShotblastApp {
       });
     }
 
-    // 7. Restore saved machine & operator
+    // 7. Restore saved machine & auto-suggest operator by machine + shift
     const savedMachine = localStorage.getItem('shotblast_last_machine');
     if (savedMachine && this.machines.includes(savedMachine)) {
       this.selectMachine(savedMachine, false);
@@ -266,32 +282,65 @@ class ShotblastApp {
       this.selectMachine(this.machines[0], false);
     }
 
-    const savedWorkerId = localStorage.getItem('shotblast_last_operator_id');
-    if (savedWorkerId) {
-      const found = this.workers.find(w => String(w.id).trim().toUpperCase() === String(savedWorkerId).trim().toUpperCase());
-      if (found) {
-        this.selectOperator(found, false);
-      }
-    }
+    // Auto-suggest worker according to schedule (Machine + Shift)
+    this.autoSuggestWorker(false);
 
     this.validateForm();
   }
 
   // ==========================================
-  // CLOCK & THEME & UTILITIES
+  // CLOCK, PRODUCTION DAY (06:00 AM CUTOFF) & UTILITIES
   // ==========================================
+  getProductionDate(dateObj = new Date()) {
+    const d = new Date(dateObj);
+    // Factory production day: 06:00:00 to 05:59:59 next day
+    if (d.getHours() < 6) {
+      d.setDate(d.getDate() - 1);
+    }
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  getActiveProductionDate() {
+    return this.retroactiveDate || this.getProductionDate();
+  }
+
+  formatDisplayDate(isoDateStr) {
+    if (!isoDateStr) return '';
+    const parts = isoDateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return isoDateStr;
+  }
+
   startClock() {
+    let lastProdDate = this.getProductionDate();
     const updateTime = () => {
       const now = new Date();
-      const d = String(now.getDate()).padStart(2, '0');
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const y = now.getFullYear();
       const hh = String(now.getHours()).padStart(2, '0');
       const mm = String(now.getMinutes()).padStart(2, '0');
       const ss = String(now.getSeconds()).padStart(2, '0');
 
-      if (this.elements.liveDate) this.elements.liveDate.textContent = `${d}/${m}/${y}`;
+      const currentProd = this.getProductionDate(now);
+      const activeProd = this.getActiveProductionDate();
+
+      if (this.elements.liveDate) {
+        this.elements.liveDate.textContent = this.formatDisplayDate(activeProd);
+      }
       if (this.elements.liveTime) this.elements.liveTime.textContent = `${hh}:${mm}:${ss}`;
+
+      // 06:00:00 AM Production Day Cutoff Rollover
+      if (currentProd !== lastProdDate) {
+        lastProdDate = currentProd;
+        this.detectAndSetCurrentShift(true);
+        this.populateHistoryDateFilter();
+        this.updateNextTurnNumber();
+        this.renderProductionTable();
+        this.updateKPIs();
+      }
     };
     updateTime();
     setInterval(updateTime, 1000);
@@ -441,25 +490,19 @@ class ShotblastApp {
 
     localStorage.setItem('shotblast_last_machine', code);
 
-    // Update hint at Step 2
+    // Update hint at Step 3
     if (this.elements.operatorMachineHint) {
-      this.elements.operatorMachineHint.textContent = `Ưu tiên người thuộc máy: ${code} (vẫn cho chọn người khác)`;
+      this.elements.operatorMachineHint.textContent = `Tự động chọn theo máy: ${code} & Ca ${this.currentShift} (vẫn cho đổi người)`;
     }
 
     if (window.soundManager) window.soundManager.playClick();
 
+    // Auto-suggest worker by schedule (Machine + Shift)
+    this.autoSuggestWorker(true);
+
     // If operator dropdown is open or search input is focused, refresh it
     if (!this.elements.operatorDropdownList.classList.contains('hidden')) {
       this.renderOperatorDropdown(this.elements.inputOperatorSearch.value);
-    }
-
-    // Check if current operator belongs to this machine
-    if (this.currentWorker) {
-      const matches = this.workerMatchesMachine(this.currentWorker, code);
-      if (!matches && autoPromptWorker) {
-        // Subtle hint or keep worker
-        this.showToast(`ℹ️ Bạn vừa đổi sang ${code}. Người thao tác hiện tại (${this.currentWorker.name}) vẫn được giữ nguyên hoặc bấm "Đổi người" nếu cần.`, 'info');
-      }
     }
 
     this.validateForm();
@@ -496,25 +539,25 @@ class ShotblastApp {
   }
 
   // ==========================================
-  // STEP 2: WORKER DATA & SELECTION
+  // STEP 3: WORKER DATA & SELECTION (AUTO SUGGESTION)
   // ==========================================
   async loadWorkers() {
     const DEFAULT_WORKERS = [
-      { id: "02623124", name: "Nguyễn Công Hải", machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
-      { id: "02620127", name: "Lê Duy Tuấn", machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
-      { id: "02524300", name: "Nguyễn Văn Kiên", machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
-      { id: "02526502", name: "Trịnh Trần Huỳnh Hiệp", machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
-      { id: "02623115", name: "Nguyễn Văn Sỹ", machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
-      { id: "02620534", name: "Nguyễn Ngọc Tiến", machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
-      { id: "02627625", name: "Nguyễn Hữu Nghĩa", machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
-      { id: "02629580", name: "Phan Nhật Trường", machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
-      { id: "02629599", name: "Đặng Minh Phương Hiệp", machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
-      { id: "02622295", name: "Nguyễn Hoàng Huy", machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
-      { id: "02520340", name: "Lê Duy Hải", machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
-      { id: "02646462", name: "Nguyễn Nhất Tâm", machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
-      { id: "02622462", name: "Huỳnh Chí Cường", machines: ["SA01_SB05"], machine: "SA01_SB05", role: "Công nhân vận hành" },
-      { id: "02642721", name: "Trương Văn Thiện", machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
-      { id: "02644589", name: "Phan Văn Tuyên", machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" }
+      { id: "02623115", name: "Nguyễn Văn Sỹ", shift: 1, machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
+      { id: "02629580", name: "Phan Nhật Trường", shift: 2, machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
+      { id: "02629599", name: "Đặng Minh Phương Hiệp", shift: 3, machines: ["SA01_SB01"], machine: "SA01_SB01", role: "Công nhân vận hành" },
+      { id: "02623124", name: "Nguyễn Công Hải", shift: 1, machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
+      { id: "02620534", name: "Nguyễn Ngọc Tiến", shift: 2, machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
+      { id: "02622295", name: "Nguyễn Hoàng Huy", shift: 3, machines: ["SA01_SB02"], machine: "SA01_SB02", role: "Công nhân vận hành" },
+      { id: "02620127", name: "Lê Duy Tuấn", shift: 1, machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
+      { id: "02520340", name: "Lê Duy Hải", shift: 2, machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
+      { id: "02644589", name: "Phan Văn Tuyên", shift: 3, machines: ["SA01_SB03", "SA01_SB04"], machine: "SA01_SB03, SA01_SB04", role: "Công nhân vận hành" },
+      { id: "02622462", name: "Huỳnh Chí Cường", shift: 1, machines: ["SA01_SB05"], machine: "SA01_SB05", role: "Công nhân vận hành" },
+      { id: "02646462", name: "Nguyễn Nhất Tâm", shift: 1, machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
+      { id: "02642721", name: "Trương Văn Thiện", shift: 2, machines: ["LA02_SB01"], machine: "LA02_SB01", role: "Công nhân vận hành" },
+      { id: "02524300", name: "Nguyễn Văn Kiên", shift: 1, machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
+      { id: "02526502", name: "Trịnh Trần Huỳnh Hiệp", shift: 2, machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" },
+      { id: "02627625", name: "Nguyễn Hữu Nghĩa", shift: 3, machines: ["SA01_SB01", "SA01_SB02"], machine: "SA01_SB01, SA01_SB02", role: "Leader shotblast" }
     ];
 
     try {
@@ -534,6 +577,32 @@ class ShotblastApp {
       }
     }
     localStorage.setItem('shotblast_workers', JSON.stringify(this.workers));
+  }
+
+  autoSuggestWorker(force = false) {
+    if (!this.workers || this.workers.length === 0) return;
+    const machine = this.currentMachine;
+    const shift = Number(this.currentShift) || 1;
+
+    // 1. Worker matching machine AND shift
+    let matched = this.workers.find(w => {
+      const matchMach = this.workerMatchesMachine(w, machine);
+      const matchShift = Number(w.shift) === shift;
+      return matchMach && matchShift;
+    });
+
+    // 2. Fallback: Worker matching machine
+    if (!matched) {
+      matched = this.workers.find(w => this.workerMatchesMachine(w, machine));
+    }
+
+    if (matched) {
+      const isAlreadySelected = this.currentWorker &&
+        this.currentWorker.id === matched.id;
+      if (force || !isAlreadySelected) {
+        this.selectOperator(matched, false);
+      }
+    }
   }
 
   workerMatchesMachine(worker, machineCode) {
@@ -767,6 +836,26 @@ class ShotblastApp {
       this.elements.shiftAutoBadge.style.background = isManual ? '#E0E7FF' : '#DCFCE7';
       this.elements.shiftAutoBadge.style.color = isManual ? '#3730A3' : '#166534';
     }
+
+    // Update time input placeholders based on shift
+    if (this.currentShift === 1) {
+      this.elements.inputStartTime.placeholder = 'Nhập 830 → 08:30';
+      this.elements.inputEndTime.placeholder = 'Nhập 915 → 09:15';
+    } else if (this.currentShift === 2) {
+      this.elements.inputStartTime.placeholder = 'Nhập 245 → 14:45';
+      this.elements.inputEndTime.placeholder = 'Nhập 320 → 15:20';
+    } else {
+      this.elements.inputStartTime.placeholder = 'Nhập 1130 → 23:30';
+      this.elements.inputEndTime.placeholder = 'Nhập 245 → 02:45';
+    }
+
+    // Update hint at Step 3
+    if (this.elements.operatorMachineHint) {
+      this.elements.operatorMachineHint.textContent = `Tự động chọn theo máy: ${this.currentMachine} & Ca ${this.currentShift} (vẫn cho đổi người)`;
+    }
+
+    // Auto-suggest worker for this shift + machine
+    this.autoSuggestWorker(true);
 
     if (window.soundManager) window.soundManager.playClick();
     if (this.elements.inputStartTime.value) this.normalizeShiftTimeInput(this.elements.inputStartTime, false);
@@ -1286,12 +1375,12 @@ class ShotblastApp {
     const endTime = this.elements.inputEndTime.value;
 
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const monthStr = todayStr.substring(0, 7);
+    const productionDate = this.getActiveProductionDate();
+    const monthStr = productionDate.substring(0, 7);
     const factoryLine = this.currentFactory || (machine.startsWith('SA02') || machine.startsWith('LA02') ? 'SMC2' : 'SMC3');
 
     const newBatch = {
-      date: todayStr,
+      date: productionDate,
       month: monthStr,
       shift: shift,
       machine: machine,
@@ -1424,9 +1513,9 @@ class ShotblastApp {
   // TURNS & STATS & TABLE
   // ==========================================
   getNextTurnNumber() {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayBatches = this.batches.filter(b => b.date === todayStr);
-    return todayBatches.length + 1;
+    const activeDate = this.getActiveProductionDate();
+    const activeBatches = this.batches.filter(b => (b.date || '').slice(0, 10) === activeDate);
+    return activeBatches.length + 1;
   }
 
   updateNextTurnNumber() {
@@ -1468,15 +1557,67 @@ class ShotblastApp {
     }
   }
 
+  populateHistoryDateFilter() {
+    const select = this.elements.filterProductionDate;
+    if (!select) return;
+    const currentVal = select.value || 'today';
+    select.innerHTML = '';
+
+    const todayProd = this.getProductionDate();
+    const optToday = document.createElement('option');
+    optToday.value = 'today';
+    optToday.textContent = `📅 Hôm nay: ${this.formatDisplayDate(todayProd)} (Ca hiện tại)`;
+    select.appendChild(optToday);
+
+    const optAll = document.createElement('option');
+    optAll.value = 'all';
+    optAll.textContent = `📅 Tất cả (30 ngày gần nhất)`;
+    select.appendChild(optAll);
+
+    // Generate past 30 production dates
+    const d = new Date();
+    if (d.getHours() < 6) d.setDate(d.getDate() - 1);
+
+    for (let i = 1; i <= 30; i++) {
+      const past = new Date(d);
+      past.setDate(past.getDate() - i);
+      const y = past.getFullYear();
+      const m = String(past.getMonth() + 1).padStart(2, '0');
+      const day = String(past.getDate()).padStart(2, '0');
+      const isoStr = `${y}-${m}-${day}`;
+
+      const opt = document.createElement('option');
+      opt.value = isoStr;
+      opt.textContent = `📅 ${this.formatDisplayDate(isoStr)}${i === 1 ? ' (Hôm qua)' : ''}`;
+      select.appendChild(opt);
+    }
+
+    if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+      select.value = currentVal;
+    } else {
+      select.value = 'today';
+    }
+  }
+
   renderProductionTable() {
     const tbody = this.elements.batchTableBody;
     if (!tbody) return;
     tbody.innerHTML = '';
 
+    const dateFilter = this.elements.filterProductionDate ? this.elements.filterProductionDate.value : 'today';
     const shiftFilter = this.elements.filterShift ? this.elements.filterShift.value : '';
     const machineFilter = this.elements.filterMachine ? this.elements.filterMachine.value : '';
+    const currentProd = this.getProductionDate();
 
     let list = [...this.batches];
+
+    // Filter by production day (Cutoff at 6:00 AM) or selected 30-day history
+    if (dateFilter === 'today') {
+      list = list.filter(b => (b.date || '').slice(0, 10) === currentProd);
+    } else if (dateFilter !== 'all') {
+      list = list.filter(b => (b.date || '').slice(0, 10) === dateFilter);
+    }
+
     if (shiftFilter) list = list.filter(b => String(b.shift) === shiftFilter);
     if (machineFilter) list = list.filter(b => b.machine === machineFilter);
 
@@ -1486,7 +1627,10 @@ class ShotblastApp {
     let totalFilteredQty = 0;
 
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted" style="padding: 24px;">Chưa có lượt sản lượng nào được ghi nhận.</td></tr>`;
+      const dateMsg = dateFilter === 'today'
+        ? `Chưa có lượt sản lượng nào trong ngày hôm nay (${this.formatDisplayDate(currentProd)}). Sau 06:00 sáng hệ thống tự động làm trống bảng để ca mới ghi nhận.`
+        : `Không có dữ liệu lượt nào cho ngày hoặc bộ lọc đã chọn.`;
+      tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted" style="padding: 24px;">${dateMsg}</td></tr>`;
     } else {
       list.forEach(b => {
         totalFilteredQty += Number(b.quantity) || 0;
@@ -1533,8 +1677,17 @@ class ShotblastApp {
   }
 
   updateKPIs() {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayBatches = this.batches.filter(b => b.date === todayStr);
+    const dateFilter = this.elements.filterProductionDate ? this.elements.filterProductionDate.value : 'today';
+    const currentProd = this.getProductionDate();
+
+    let targetBatches = [];
+    if (dateFilter === 'today') {
+      targetBatches = this.batches.filter(b => (b.date || '').slice(0, 10) === currentProd);
+    } else if (dateFilter === 'all') {
+      targetBatches = [...this.batches];
+    } else {
+      targetBatches = this.batches.filter(b => (b.date || '').slice(0, 10) === dateFilter);
+    }
 
     let totalQty = 0;
     let s1 = 0, s2 = 0, s3 = 0;
@@ -1542,7 +1695,7 @@ class ShotblastApp {
 
     this.machines.forEach(m => { machineCounts[m] = 0; });
 
-    todayBatches.forEach(b => {
+    targetBatches.forEach(b => {
       const q = Number(b.quantity) || 0;
       totalQty += q;
       if (b.shift === 1) s1 += q;
@@ -1558,7 +1711,7 @@ class ShotblastApp {
     if (this.elements.kpiShift1Qty) this.elements.kpiShift1Qty.textContent = s1.toLocaleString();
     if (this.elements.kpiShift2Qty) this.elements.kpiShift2Qty.textContent = s2.toLocaleString();
     if (this.elements.kpiShift3Qty) this.elements.kpiShift3Qty.textContent = s3.toLocaleString();
-    if (this.elements.kpiTotalTurns) this.elements.kpiTotalTurns.textContent = todayBatches.length;
+    if (this.elements.kpiTotalTurns) this.elements.kpiTotalTurns.textContent = targetBatches.length;
 
     if (this.elements.kpiMachinesList) {
       this.elements.kpiMachinesList.innerHTML = '';
@@ -1574,6 +1727,70 @@ class ShotblastApp {
       const pct = Math.min(100, Math.round((totalQty / 10000) * 100));
       this.elements.kpiProgressBar.style.width = `${pct}%`;
     }
+  }
+
+  // ==========================================
+  // RETROACTIVE DATE OVERRIDE (MANAGER PASSWORD: smc123)
+  // ==========================================
+  openRetroDateModal() {
+    if (this.elements.inputRetroPassword) this.elements.inputRetroPassword.value = '';
+    if (this.elements.retroPasswordError) this.elements.retroPasswordError.classList.add('hidden');
+    if (this.elements.inputTargetDate) {
+      this.elements.inputTargetDate.value = this.getActiveProductionDate();
+      this.elements.inputTargetDate.max = this.getProductionDate();
+    }
+    if (this.elements.retroDateModal) {
+      this.elements.retroDateModal.classList.remove('hidden');
+      setTimeout(() => {
+        if (this.elements.inputRetroPassword) this.elements.inputRetroPassword.focus();
+      }, 100);
+    }
+  }
+
+  confirmRetroDate() {
+    const pass = (this.elements.inputRetroPassword ? this.elements.inputRetroPassword.value : '').trim();
+    if (pass !== 'smc123') {
+      if (this.elements.retroPasswordError) this.elements.retroPasswordError.classList.remove('hidden');
+      if (window.soundManager) window.soundManager.playError();
+      return;
+    }
+
+    const selectedDate = this.elements.inputTargetDate ? this.elements.inputTargetDate.value : '';
+    if (!selectedDate) {
+      alert('Vui lòng chọn ngày sản xuất cần ghi!');
+      return;
+    }
+
+    const todayProd = this.getProductionDate();
+    if (selectedDate === todayProd) {
+      this.cancelRetroDate();
+    } else {
+      this.retroactiveDate = selectedDate;
+      if (this.elements.retroactiveDateBanner) this.elements.retroactiveDateBanner.classList.remove('hidden');
+      if (this.elements.displayRetroDate) this.elements.displayRetroDate.textContent = this.formatDisplayDate(selectedDate);
+      if (this.elements.btnOpenRetroDateModal) {
+        this.elements.btnOpenRetroDateModal.classList.add('retro-active');
+        this.elements.btnOpenRetroDateModal.innerHTML = `⚠️ Ngày: ${this.formatDisplayDate(selectedDate)}`;
+      }
+      this.showToast(`⚠️ Đang ở chế độ nhập ngày cũ: ${this.formatDisplayDate(selectedDate)}`, 'warn');
+    }
+
+    if (this.elements.retroDateModal) this.elements.retroDateModal.classList.add('hidden');
+    if (window.soundManager) window.soundManager.playSuccess();
+    this.updateNextTurnNumber();
+    this.validateForm();
+  }
+
+  cancelRetroDate() {
+    this.retroactiveDate = null;
+    if (this.elements.retroactiveDateBanner) this.elements.retroactiveDateBanner.classList.add('hidden');
+    if (this.elements.btnOpenRetroDateModal) {
+      this.elements.btnOpenRetroDateModal.classList.remove('retro-active');
+      this.elements.btnOpenRetroDateModal.innerHTML = '🔒 Đổi ngày';
+    }
+    this.showToast(`✓ Đã quay lại ngày sản xuất hôm nay (${this.formatDisplayDate(this.getProductionDate())})`, 'info');
+    this.updateNextTurnNumber();
+    this.validateForm();
   }
 
   // ==========================================
@@ -2182,6 +2399,22 @@ class ShotblastApp {
       this.validateForm();
     });
 
+    this.elements.inputStartTime.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        this.normalizeShiftTimeInput(this.elements.inputStartTime);
+        this.validateShotTimes();
+        this.elements.inputEndTime.focus();
+      }
+    });
+
+    this.elements.inputEndTime.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        this.normalizeShiftTimeInput(this.elements.inputEndTime);
+        this.validateShotTimes();
+        this.elements.inputProductCode.focus();
+      }
+    });
+
     this.elements.inputStartTime.addEventListener('focus', () => {
       this.focusedInput = this.elements.inputStartTime;
     });
@@ -2311,7 +2544,35 @@ class ShotblastApp {
       });
     });
 
+    // Retroactive Date Modal Events
+    if (this.elements.btnOpenRetroDateModal) {
+      this.elements.btnOpenRetroDateModal.addEventListener('click', () => this.openRetroDateModal());
+    }
+    if (this.elements.btnCloseRetroDateModal) {
+      this.elements.btnCloseRetroDateModal.addEventListener('click', () => this.elements.retroDateModal.classList.add('hidden'));
+    }
+    if (this.elements.btnCancelRetroModal) {
+      this.elements.btnCancelRetroModal.addEventListener('click', () => this.elements.retroDateModal.classList.add('hidden'));
+    }
+    if (this.elements.btnConfirmRetroDate) {
+      this.elements.btnConfirmRetroDate.addEventListener('click', () => this.confirmRetroDate());
+    }
+    if (this.elements.btnCancelRetroDate) {
+      this.elements.btnCancelRetroDate.addEventListener('click', () => this.cancelRetroDate());
+    }
+    if (this.elements.inputRetroPassword) {
+      this.elements.inputRetroPassword.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') this.confirmRetroDate();
+      });
+    }
+
     // Table Filters
+    if (this.elements.filterProductionDate) {
+      this.elements.filterProductionDate.addEventListener('change', () => {
+        this.renderProductionTable();
+        this.updateKPIs();
+      });
+    }
     if (this.elements.filterShift) {
       this.elements.filterShift.addEventListener('change', () => this.renderProductionTable());
     }
